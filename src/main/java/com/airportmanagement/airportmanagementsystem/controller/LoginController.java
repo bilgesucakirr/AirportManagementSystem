@@ -2,6 +2,7 @@ package com.airportmanagement.airportmanagementsystem.controller;
 
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
+import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -13,6 +14,9 @@ public class LoginController {
 
     @Autowired
     private UserRepository userRepo;
+
+    @Autowired
+    private UserRoleRepository userRoleRepo;
 
     @GetMapping("/login")
     public String showLoginForm() {
@@ -27,9 +31,18 @@ public class LoginController {
         User user = userRepo.findByEmail(email).orElse(null);
 
         if (user != null && user.getPasswordHash().equals(password)) {
-
             session.setAttribute("loggedUser", user);
-            return "redirect:/dashboard";
+
+            if (userRoleRepo.findByUserAndRole_RoleName(user, "ADMIN").isPresent()) {
+                return "redirect:/admin/dashboard";
+            } else if (userRoleRepo.findByUserAndRole_RoleName(user, "STAFF").isPresent()) {
+                return "redirect:/staff/dashboard";
+            } else if (userRoleRepo.findByUserAndRole_RoleName(user, "PASSENGER").isPresent()) {
+                return "redirect:/passenger/dashboard";
+            } else {
+                return "redirect:/";
+            }
+
         } else {
             model.addAttribute("error", true);
             return "login";
