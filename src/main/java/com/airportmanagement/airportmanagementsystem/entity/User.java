@@ -4,6 +4,31 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+
+@NamedNativeQueries({
+        @NamedNativeQuery(
+                name = "User.findAllUsersWithRoles",
+                query = "EXEC sp_GetAllUsersWithRoles",
+                resultSetMapping = "UserWithRoleDTOMapping"
+        )
+})
+@SqlResultSetMappings({
+        @SqlResultSetMapping(
+                name = "UserWithRoleDTOMapping",
+                classes = @ConstructorResult(
+                        targetClass = com.airportmanagement.airportmanagementsystem.dto.UserWithRoleDTO.class,
+                        columns = {
+                                @ColumnResult(name = "UserID", type = Integer.class),
+                                @ColumnResult(name = "FullName", type = String.class),
+                                @ColumnResult(name = "Email", type = String.class),
+                                @ColumnResult(name = "PhoneNumber", type = String.class),
+                                @ColumnResult(name = "RegistrationDate", type = LocalDateTime.class), // Burada tip belirtiyoruz
+                                @ColumnResult(name = "Roles", type = String.class)
+                        }
+                )
+        )
+})
+
 @Entity
 @Data
 @NoArgsConstructor
