@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Turkish Airlines – Booking Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS stilleriniz buraya gelecek, daha önceki Passenger sayfalarıyla aynı */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e0e6ed 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+            opacity: 0;
+            animation: fadeInPage 1s ease-out forwards;
+        }
+        @keyframes fadeInPage {
+            to { opacity: 1; }
+        }
+
+        .navbar {
+            background-color: #003057;
+            padding: 0.8rem 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 10;
+        }
+        .navbar-brand img {
+            height: 45px;
+            margin-right: 10px;
+        }
+        .navbar-brand span {
+            color: #FFFFFF;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 600;
+            margin-left: 25px;
+            font-size: 1.05rem;
+            transition: color 0.3s ease-in-out, transform 0.2s ease-in-out;
+        }
+        .nav-link:hover {
+            color: #FFD700 !important;
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            padding: 50px 30px;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 3.2rem;
+            font-weight: 900;
+            color: #003057;
+            margin-bottom: 20px;
+            text-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+            display: inline-block;
+        }
+        .page-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 5px;
+            background-color: #C90016;
+            margin: 10px auto 0;
+            border-radius: 5px;
+        }
+
+        /* Card Style */
+        .card-details {
+            background-color: #FFFFFF;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px 30px;
+            text-align: left;
+            border: 1px solid #eee;
+            animation: fadeInUp 0.8s ease-out 0.5s backwards;
+        }
+        .card-details h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            color: #003057;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #C90016;
+            padding-bottom: 10px;
+        }
+        .detail-item {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .detail-item strong {
+            color: #003057;
+            font-weight: 600;
+        }
+        .detail-item i {
+            color: #C90016;
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+
+        /* Route Info Styling */
+        .route-info-detail {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .route-info-detail .airport-code {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 3rem;
+            font-weight: 900;
+            color: #C90016;
+        }
+        .route-info-detail .arrow-icon {
+            font-size: 2rem;
+            color: #003057;
+            margin: 0 20px;
+        }
+        .route-info-detail .airport-name {
+            font-size: 1.1rem;
+            color: #777;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+        .status-Scheduled { background-color: #007bff; }
+        .status-Delayed { background-color: #ffc107; color: #333; }
+        .status-Cancelled { background-color: #dc3545; }
+        .status-Departed { background-color: #28a745; }
+        .status-Arrived { background-color: #6c757d; }
+
+        .btn-back {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            padding: 12px 35px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(108,117,125,0.3);
+            color: #FFFFFF;
+        }
+        .btn-back:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108,117,125,0.4);
+            color: #FFFFFF;
+        }
+
+        /* Check-in butonu stilleri (daha büyük ve belirgin) */
+        .btn-check-in-large {
+            background-color: #28a745; /* Yeşil */
+            border-color: #28a745;
+            color: white;
+            padding: 15px 35px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+        }
+        .btn-check-in-large:hover:not(:disabled) {
+            background-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40,167,69,0.4);
+        }
+        .btn-check-in-large:disabled {
+            background-color: #6c757d; /* Gri ve pasif */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Animasyonlar */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .page-title { font-size: 2.5rem; }
+            .card-details { padding: 30px 20px; }
+            .card-details h3 { font-size: 1.5rem; }
+            .detail-item { font-size: 1rem; }
+            .route-info-detail .airport-code { font-size: 2.2rem; }
+            .route-info-detail .arrow-icon { font-size: 1.5rem; }
+            .route-info-detail .airport-name { font-size: 0.9rem; }
+            .nav-link { margin-left: 10px; font-size: 0.95rem; }
+            .navbar-brand span { font-size: 1.2rem; }
+            .navbar-brand img { height: 35px; }
+            .btn-check-in-large { padding: 12px 25px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/passenger/dashboard">
+            <img src="/img/white-logo.png" alt="THY Logo">
+            <span>Turkish Airlines</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/passenger/profile"><i class="fas fa-user-circle"></i> My Profile</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/passenger/my-bookings"><i class="fas fa-ticket-alt"></i> My Bookings</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/passenger/flights/search"><i class="fas fa-plane-departure"></i> Search & Book Flights</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="main-content">
+    <h1 class="page-title">Booking Details</h1>
+
+    <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+    <div th:if="${booking}" class="card card-details">
+        <div class="row">
+            <div class="col-md-6">
+                <h3><i class="fas fa-ticket-alt"></i> Ticket Information</h3>
+                <p class="detail-item"><strong>Ticket ID:</strong> <span th:text="${booking.ticketID}"></span></p>
+                <p class="detail-item"><strong>Seat Number:</strong> <span th:text="${booking.seatNumber}"></span></p>
+                <p class="detail-item"><strong>Price:</strong> <span th:text="${#numbers.formatCurrency(booking.price)}"></span></p>
+                <p class="detail-item"><strong>Purchase Date:</strong> <span th:text="${#temporals.format(booking.getPurchaseLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></span></p>
+                <p class="detail-item"><strong>Check-in Status:</strong>
+                    <span th:if="${booking.isCheckedIn}" class="badge bg-success">Checked In <i class="fas fa-check"></i></span>
+                    <span th:unless="${booking.isCheckedIn}" class="badge bg-warning text-dark">Not Checked In <i class="fas fa-hourglass-start"></i></span>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h3><i class="fas fa-plane-departure"></i> Flight Information</h3>
+                <p class="detail-item"><strong>Flight ID:</strong> <span th:text="${booking.flightID}"></span></p>
+                <p class="detail-item"><strong>Aircraft:</strong> <span th:text="${booking.aircraftModel + ' (' + booking.aircraftTailNumber + ')'}"></span></p>
+                <p class="detail-item"><strong>Flight Status:</strong> <span class="status-badge" th:classappend="'status-' + ${booking.flightStatus}" th:text="${booking.flightStatus}"></span></p>
+            </div>
+        </div>
+        <div class="route-info-detail">
+            <span class="airport-code" th:text="${booking.departureAirportCode}"></span>
+            <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
+            <span class="airport-code" th:text="${booking.arrivalAirportCode}"></span>
+            <br>
+            <span class="airport-name" th:text="${booking.departureAirportName}"></span> - <span class="airport-name" th:text="${booking.arrivalAirportName}"></span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <p class="detail-item"><i class="fas fa-clock"></i> Departure Time: <span th:text="${#temporals.format(booking.getDepartureLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></span></p>
+            </div>
+            <div class="col-md-6">
+                <p class="detail-item"><i class="fas fa-clock"></i> Arrival Time: <span th:text="${#temporals.format(booking.getArrivalLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></span></p>
+            </div>
+        </div>
+
+        <div class="mt-4 text-center">
+            <!-- Büyük check-in butonu -->
+            <form th:action="@{/passenger/check-in}" method="post" style="display:inline-block; margin-right: 15px;">
+                <input type="hidden" name="ticketID" th:value="${booking.ticketID}">
+                <button type="submit" class="btn btn-check-in-large"
+                        th:disabled="${!isCheckInAvailableNow || booking.isCheckedIn}">
+                    <i class="fas fa-clipboard-check"></i> Check-in Now
+                </button>
+            </form>
+            <a th:href="@{/passenger/my-bookings}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back to My Bookings</a>
+        </div>
+    </div>
+
+    <div th:unless="${booking}" class="alert alert-info" role="alert">
+        No booking details found.
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

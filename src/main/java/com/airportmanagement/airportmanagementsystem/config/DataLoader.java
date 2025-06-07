@@ -5,17 +5,22 @@ import com.airportmanagement.airportmanagementsystem.entity.Passenger;
 import com.airportmanagement.airportmanagementsystem.entity.Role;
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.entity.UserRole;
+import com.airportmanagement.airportmanagementsystem.entity.Aircraft;
+import com.airportmanagement.airportmanagementsystem.entity.Seat;
 import com.airportmanagement.airportmanagementsystem.repository.ApplicationSettingRepository;
 import com.airportmanagement.airportmanagementsystem.repository.PassengerRepository;
 import com.airportmanagement.airportmanagementsystem.repository.RoleRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
+import com.airportmanagement.airportmanagementsystem.repository.AircraftRepository;
+import com.airportmanagement.airportmanagementsystem.repository.SeatRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 @Component
 public class DataLoader {
@@ -34,6 +39,14 @@ public class DataLoader {
 
     @Autowired
     private ApplicationSettingRepository appSettingRepo;
+
+    @Autowired
+    private AircraftRepository aircraftRepo;
+
+    @Autowired
+    private SeatRepository seatRepo;
+
+    // SİZİN KODUNUZDAKİ MEVCUT KISIMLAR
 
     @PostConstruct
     public void init() {
@@ -97,19 +110,105 @@ public class DataLoader {
             }
         });
 
-
-
-
         if (appSettingRepo.count() == 0) {
             ApplicationSetting defaultSettings = ApplicationSetting.builder()
-
                     .backupDirectory("C:\\SQLBackups\\AirportDb")
                     .emailAlertsRecipient("admin@thy.com")
                     .archiveDataEnabled(false)
                     .archiveRetentionDays(365)
                     .minimumFlightCapacity(100)
+                    .minimumTurnaroundMinutes(60)
+                    .maximumCheckInHoursBeforeDeparture(24)
+                    .minimumCheckInMinutesBeforeDeparture(60)
                     .build();
             appSettingRepo.save(defaultSettings);
         }
+
+        List<Aircraft> allAircrafts = aircraftRepo.findAll();
+        if (allAircrafts.isEmpty()) {
+            Aircraft defaultAircraft = Aircraft.builder()
+                    .model("Airbus A320-200")
+                    .capacity(180) // Default capacity
+                    .tailNumber("TC-JCK")
+                    .rangeMiles(3300)
+                    .build();
+            aircraftRepo.save(defaultAircraft);
+            allAircrafts.add(defaultAircraft);
+        }
+
+        for (Aircraft aircraft : allAircrafts) {
+            if (seatRepo.findByAircraft_AircraftID(aircraft.getAircraftID()).isEmpty()) {
+                generateSeatsForAircraft(aircraft);
+            }
+        }
+    }
+
+    private void generateSeatsForAircraft(Aircraft aircraft) {
+        int totalCapacity = aircraft.getCapacity();
+
+        int seatsPerFirstRow = 2;      // ör: A, F
+        int seatsPerBusinessRow = 4;   // ör: A, B, E, F
+        int seatsPerEconomyRow = 6;    // ör: A, B, C, D, E, F
+
+        int totalRows = totalCapacity / seatsPerEconomyRow;
+        int remainingSeats = totalCapacity % seatsPerEconomyRow;
+
+        int firstRows = totalRows / 12;
+        int businessRows = (totalRows * 2) / 12;
+        int economyRows = totalRows - firstRows - businessRows;
+
+        int extraEconomySeats = remainingSeats;
+
+        char[] firstCols = {'A', 'F'};
+        char[] businessCols = {'A', 'B', 'E', 'F'};
+        char[] economyCols = {'A', 'B', 'C', 'D', 'E', 'F'};
+
+        int rowNum = 1;
+
+        for (int i = 0; i < firstRows; i++) {
+            for (char col : firstCols) {
+                seatRepo.save(Seat.builder()
+                        .aircraft(aircraft)
+                        .seatNumber(rowNum + String.valueOf(col))
+                        .seatClass("First")
+                        .build());
+            }
+            rowNum++;
+        }
+
+        for (int i = 0; i < businessRows; i++) {
+            for (char col : businessCols) {
+                seatRepo.save(Seat.builder()
+                        .aircraft(aircraft)
+                        .seatNumber(rowNum + String.valueOf(col))
+                        .seatClass("Business")
+                        .build());
+            }
+            rowNum++;
+        }
+
+        for (int i = 0; i < economyRows; i++) {
+            for (char col : economyCols) {
+                seatRepo.save(Seat.builder()
+                        .aircraft(aircraft)
+                        .seatNumber(rowNum + String.valueOf(col))
+                        .seatClass("Economy")
+                        .build());
+            }
+            rowNum++;
+        }
+
+        if (extraEconomySeats > 0) {
+            for (int i = 0; i < extraEconomySeats; i++) {
+                seatRepo.save(Seat.builder()
+                        .aircraft(aircraft)
+                        .seatNumber(rowNum + String.valueOf(economyCols[i]))
+                        .seatClass("Economy")
+                        .build());
+            }
+        }
+
+        int totalGenerated = (firstRows * seatsPerFirstRow) + (businessRows * seatsPerBusinessRow) + (economyRows * seatsPerEconomyRow) + extraEconomySeats;
+        System.out.println("Generated " + totalGenerated + " seats for aircraft: " + aircraft.getModel() + " (ID: " + aircraft.getAircraftID() + ")");
     }
 }

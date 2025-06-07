@@ -1,0 +1,393 @@
+package com.airportmanagement.airportmanagementsystem.controller;
+
+import com.airportmanagement.airportmanagementsystem.dto.FlightSearchDTO;
+import com.airportmanagement.airportmanagementsystem.dto.PassengerBookingDTO;
+import com.airportmanagement.airportmanagementsystem.dto.PassengerProfileDTO;
+import com.airportmanagement.airportmanagementsystem.dto.SeatAvailabilityDTO;
+import com.airportmanagement.airportmanagementsystem.entity.Airport;
+import com.airportmanagement.airportmanagementsystem.entity.ApplicationSetting;
+import com.airportmanagement.airportmanagementsystem.entity.User;
+import com.airportmanagement.airportmanagementsystem.repository.AirportRepository;
+import com.airportmanagement.airportmanagementsystem.repository.FlightRepository;
+import com.airportmanagement.airportmanagementsystem.repository.PassengerRepository;
+import com.airportmanagement.airportmanagementsystem.repository.SeatRepository;
+import com.airportmanagement.airportmanagementsystem.repository.TicketRepository;
+import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
+import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
+import com.airportmanagement.airportmanagementsystem.repository.CheckInRepository;
+import com.airportmanagement.airportmanagementsystem.repository.ApplicationSettingRepository;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+
+@Controller
+@RequestMapping("/passenger")
+public class PassengerController {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private PassengerRepository passengerRepo;
+
+    @Autowired
+    private UserRoleRepository userRoleRepo;
+
+    @Autowired
+    private FlightRepository flightRepo;
+
+    @Autowired
+    private AirportRepository airportRepo;
+
+    @Autowired
+    private SeatRepository seatRepo;
+
+    @Autowired
+    private TicketRepository ticketRepo;
+
+    @Autowired
+    private CheckInRepository checkInRepo;
+
+    @Autowired
+    private ApplicationSettingRepository appSettingRepo;
+
+    private boolean checkPassengerRole(HttpSession session) {
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        return loggedUser != null && userRoleRepo.findByUserAndRole_RoleName(loggedUser, "PASSENGER").isPresent();
+    }
+
+    @GetMapping("/dashboard")
+    @Transactional(readOnly = true)
+    public String showPassengerDashboard(HttpSession session, Model model) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        model.addAttribute("fullName", loggedUser.getFullName());
+        return "passenger-dashboard";
+    }
+
+    @GetMapping("/profile")
+    @Transactional(readOnly = true)
+    public String showProfile(HttpSession session, Model model) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        Optional<PassengerProfileDTO> profileOptional = userRepo.getPassengerProfile(loggedUser.getUserID());
+
+        if (profileOptional.isPresent()) {
+            model.addAttribute("profile", profileOptional.get());
+            model.addAttribute("currentPasswordHash", loggedUser.getPasswordHash());
+        } else {
+            model.addAttribute("error", "Passenger profile not found.");
+        }
+        return "passenger-profile";
+    }
+
+    @PostMapping("/profile/update")
+    public String updateProfile(HttpSession session,
+                                @RequestParam String fullName,
+                                @RequestParam String email,
+                                @RequestParam String passwordHash,
+                                @RequestParam String phoneNumber,
+                                @RequestParam String nationality,
+                                @RequestParam String passportNumber,
+                                RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        User loggedUser = (User) session.getAttribute("loggedUser");
+
+        Integer resultCode = userRepo.updatePassengerProfile(
+                loggedUser.getUserID(),
+                fullName,
+                email,
+                passwordHash,
+                phoneNumber,
+                nationality,
+                passportNumber
+        );
+
+        if (resultCode == 0) {
+            User updatedUser = userRepo.findById(loggedUser.getUserID()).orElse(null);
+            if (updatedUser != null) {
+                session.setAttribute("loggedUser", updatedUser);
+            }
+            redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
+        } else {
+            String errorMessage;
+            switch (resultCode) {
+                case -1: errorMessage = "User not found."; break;
+                case -2: errorMessage = "Email already in use by another account."; break;
+                default: errorMessage = "Failed to update profile. Error code: " + resultCode; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+        }
+        return "redirect:/passenger/profile";
+    }
+
+    @GetMapping("/flights/search")
+    @Transactional(readOnly = true)
+    public String showFlightSearch(HttpSession session, Model model) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        List<Airport> airports = airportRepo.findAll();
+        model.addAttribute("airports", airports);
+        model.addAttribute("flights", List.of());
+        return "passenger-search-flights";
+    }
+
+    @PostMapping("/flights/search")
+    @Transactional(readOnly = true)
+    public String searchFlights(HttpSession session,
+                                @RequestParam(required = false) String departureAirportCode,
+                                @RequestParam(required = false) String arrivalAirportCode,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate,
+                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
+                                @RequestParam(defaultValue = "1") Integer minAvailableSeats,
+                                Model model) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        if (departureDate != null && departureDate.isBefore(LocalDate.now())) {
+            model.addAttribute("error", "Departure date cannot be in the past.");
+            model.addAttribute("airports", airportRepo.findAll());
+            model.addAttribute("departureAirportCode", departureAirportCode);
+            model.addAttribute("arrivalAirportCode", arrivalAirportCode);
+            model.addAttribute("departureDate", departureDate);
+            model.addAttribute("returnDate", returnDate);
+            model.addAttribute("minAvailableSeats", minAvailableSeats);
+            return "passenger-search-flights";
+        }
+
+        LocalDateTime departureDateTime = departureDate != null ? departureDate.atStartOfDay() : null;
+        LocalDateTime returnDateTime = returnDate != null ? returnDate.atStartOfDay() : null;
+
+
+        List<FlightSearchDTO> flights = flightRepo.searchAvailableFlights(
+                departureAirportCode,
+                arrivalAirportCode,
+                departureDateTime,
+                returnDateTime,
+                minAvailableSeats
+        );
+        model.addAttribute("flights", flights);
+        List<Airport> airports = airportRepo.findAll();
+        model.addAttribute("airports", airports);
+
+        model.addAttribute("departureAirportCode", departureAirportCode);
+        model.addAttribute("arrivalAirportCode", arrivalAirportCode);
+        model.addAttribute("departureDate", departureDate);
+        model.addAttribute("returnDate", returnDate);
+        model.addAttribute("minAvailableSeats", minAvailableSeats);
+
+        return "passenger-search-flights";
+    }
+
+    @GetMapping("/flights/select-seat")
+    @Transactional(readOnly = true)
+    public String showSeatSelection(HttpSession session,
+                                    @RequestParam Integer flightID,
+                                    Model model,
+                                    RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        List<FlightSearchDTO> flightDetailsList = flightRepo.searchAvailableFlights(null, null, null, null, 0);
+        Optional<FlightSearchDTO> flightDetailsOptional = flightDetailsList.stream()
+                .filter(f -> f.getFlightID().equals(flightID))
+                .findFirst();
+
+        if (flightDetailsOptional.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Flight details not found.");
+            return "redirect:/passenger/flights/search";
+        }
+
+        FlightSearchDTO flight = flightDetailsOptional.get();
+
+        if (flight.getDepartureLocalDateTime().isBefore(LocalDateTime.now())) {
+            redirectAttributes.addFlashAttribute("error", "This flight has already departed and cannot be booked.");
+            return "redirect:/passenger/flights/search";
+        }
+
+
+        List<SeatAvailabilityDTO> seats = seatRepo.getFlightAvailableSeats(flightID);
+
+        List<SeatAvailabilityDTO> sortedSeats = seats.stream()
+                .sorted(Comparator.comparing((SeatAvailabilityDTO s) -> {
+                    try {
+                        return Integer.parseInt(s.getSeatNumber().replaceAll("[^0-9]", ""));
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
+                }).thenComparing(SeatAvailabilityDTO::getSeatNumber))
+                .collect(Collectors.toList());
+
+
+        model.addAttribute("flight", flight);
+        model.addAttribute("seats", sortedSeats);
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        passengerRepo.findByUser(loggedUser).ifPresent(p -> model.addAttribute("passengerID", p.getPassengerID()));
+
+        return "passenger-seat-selection";
+    }
+
+
+    @PostMapping("/book")
+    public String bookTicket(HttpSession session,
+                             @RequestParam Integer flightID,
+                             @RequestParam Integer passengerID,
+                             @RequestParam String seatNumber,
+                             @RequestParam BigDecimal price,
+                             RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        if (passengerID == null) {
+            redirectAttributes.addFlashAttribute("error", "Passenger information is missing. Please log in again.");
+            return "redirect:/login";
+        }
+
+        Integer newTicketId = ticketRepo.bookTicket(passengerID, flightID, seatNumber, price);
+
+        if (newTicketId != null && newTicketId > 0) {
+            redirectAttributes.addFlashAttribute("success", "Ticket booked successfully! Your Ticket ID: " + newTicketId);
+            return "redirect:/passenger/my-bookings";
+        } else {
+            String errorMessage;
+            switch (newTicketId) {
+                case -1: errorMessage = "Passenger not found."; break;
+                case -2: errorMessage = "Flight not found."; break;
+                case -3: errorMessage = "Flight is not active (e.g., Cancelled, Arrived)."; break;
+                case -4: errorMessage = "Invalid seat number for this flight."; break;
+                case -5: errorMessage = "Seat is already taken. Please select another seat."; break;
+                case -6: errorMessage = "Flight is full. Please select another flight."; break;
+                case -7: errorMessage = "Cannot book this flight: it has already departed."; break;
+                default: errorMessage = "Failed to book ticket. Please try again. Error Code: " + newTicketId; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+            return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
+        }
+    }
+
+
+    @GetMapping("/my-bookings")
+    @Transactional(readOnly = true)
+    public String showMyBookings(HttpSession session, Model model) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        List<PassengerBookingDTO> myBookings = ticketRepo.getPassengerBookings(loggedUser.getUserID());
+
+        myBookings.forEach(booking -> {
+            boolean isCheckedIn = checkInRepo.existsByTicket_TicketID(booking.getTicketID());
+            booking.setCheckedIn(isCheckedIn);
+        });
+
+        model.addAttribute("bookings", myBookings);
+        return "passenger-my-bookings";
+    }
+
+    @GetMapping("/booking-details")
+    @Transactional(readOnly = true)
+    public String showBookingDetails(HttpSession session,
+                                     @RequestParam Integer ticketID,
+                                     Model model,
+                                     RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+        User loggedUser = (User) session.getAttribute("loggedUser");
+
+        Optional<PassengerBookingDTO> bookingDetailsOptional = ticketRepo.getPassengerBookings(loggedUser.getUserID())
+                .stream()
+                .filter(b -> b.getTicketID().equals(ticketID))
+                .findFirst();
+
+        if (bookingDetailsOptional.isPresent()) {
+            PassengerBookingDTO booking = bookingDetailsOptional.get();
+            boolean isCheckedIn = checkInRepo.existsByTicket_TicketID(booking.getTicketID());
+            booking.setCheckedIn(isCheckedIn);
+
+            LocalDateTime departureTime = booking.getDepartureLocalDateTime();
+            LocalDateTime currentTime = LocalDateTime.now();
+
+            Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
+            int maxCheckInHoursBefore = appSettings.map(ApplicationSetting::getMaximumCheckInHoursBeforeDeparture).orElse(24);
+            int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
+
+            LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
+            LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
+
+            boolean isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime) && !isCheckedIn);
+
+            model.addAttribute("booking", booking);
+            model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
+
+        } else {
+            redirectAttributes.addFlashAttribute("error", "Booking details not found or you are not authorized to view it.");
+            return "redirect:/passenger/my-bookings";
+        }
+        return "passenger-booking-details";
+    }
+
+    @PostMapping("/check-in")
+    public String performCheckIn(HttpSession session,
+                                 @RequestParam Integer ticketID,
+                                 RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        Optional<PassengerBookingDTO> bookingOptional = ticketRepo.getPassengerBookings(loggedUser.getUserID())
+                .stream()
+                .filter(b -> b.getTicketID().equals(ticketID))
+                .findFirst();
+        if (bookingOptional.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized attempt to check-in for ticket " + ticketID);
+            return "redirect:/passenger/my-bookings";
+        }
+
+        Integer resultCode = checkInRepo.performCheckIn(ticketID);
+
+        if (resultCode == 0) {
+            redirectAttributes.addFlashAttribute("success", "Check-in successful for Ticket ID: " + ticketID + "!");
+        } else {
+            String errorMessage;
+            switch (resultCode) {
+                case -1: errorMessage = "Check-in failed: Ticket not found."; break;
+                case -2: errorMessage = "Check-in failed: You have already checked in for this ticket."; break;
+                case -3: errorMessage = "Check-in failed: Flight is not active (e.g., cancelled, departed, arrived)."; break;
+                case -4: errorMessage = "Check-in failed: Flight has already departed."; break;
+                case -5: errorMessage = "Check-in failed: Check-in is not yet open for this flight."; break;
+                case -6: errorMessage = "Check-in failed: Check-in window has closed for this flight."; break;
+                default: errorMessage = "Check-in failed. Please try again. Error Code: " + resultCode; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+        }
+        return "redirect:/passenger/my-bookings";
+    }
+}

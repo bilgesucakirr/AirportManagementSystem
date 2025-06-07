@@ -1,6 +1,7 @@
 package com.airportmanagement.airportmanagementsystem.repository;
 
 import com.airportmanagement.airportmanagementsystem.dto.FlightDetailsDTO;
+import com.airportmanagement.airportmanagementsystem.dto.FlightSearchDTO;
 import com.airportmanagement.airportmanagementsystem.entity.Flight;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -33,4 +34,18 @@ public interface FlightRepository extends JpaRepository<Flight, Integer> {
 
     @Procedure(procedureName = "sp_DeleteFlight")
     Integer deleteFlight(@Param("FlightID") Integer flightID);
+
+
+    @Query(value = "EXEC sp_SearchAvailableFlights " +
+            "@DepartureAirportCode = :departureAirportCode, " +
+            "@ArrivalAirportCode = :arrivalAirportCode, " +
+            "@DepartureDate = :departureDate, " +
+            "@ReturnDate = :returnDate, " +
+            "@MinAvailableSeats = :minAvailableSeats",
+            nativeQuery = true)
+    List<FlightSearchDTO> searchAvailableFlights(@Param("departureAirportCode") String departureAirportCode,
+                                                 @Param("arrivalAirportCode") String arrivalAirportCode,
+                                                 @Param("departureDate") LocalDateTime departureDate,
+                                                 @Param("returnDate") LocalDateTime returnDate,
+                                                 @Param("minAvailableSeats") Integer minAvailableSeats);
 }

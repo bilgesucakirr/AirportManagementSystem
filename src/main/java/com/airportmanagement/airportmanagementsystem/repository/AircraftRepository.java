@@ -26,7 +26,7 @@ public interface AircraftRepository extends JpaRepository<Aircraft, Integer> {
     @Procedure(procedureName = "sp_DeleteAircraft")
     Integer deleteAircraft(@Param("AircraftID") Integer aircraftID);
 
-    @Query(value = "EXEC sp_GetAircraftsByRange @RouteDistanceKm = 0", nativeQuery = true)
+    @Query(value = "EXEC sp_GetAllAircrafts", nativeQuery = true)
     List<Aircraft> getAllAircrafts();
 
     @Query(value = "EXEC sp_GetAircraftsByRange @RouteDistanceKm = :routeDistanceKm", nativeQuery = true)

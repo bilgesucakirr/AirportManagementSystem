@@ -40,6 +40,7 @@ public class AdminSystemSettingsController {
         return "admin-system-settings";
     }
 
+
     @PostMapping("/settings/update")
     public String updateSystemSettings(@RequestParam String backupDirectory,
                                        @RequestParam String emailAlertsRecipient,
@@ -47,6 +48,8 @@ public class AdminSystemSettingsController {
                                        @RequestParam Integer archiveRetentionDays,
                                        @RequestParam Integer minimumFlightCapacity,
                                        @RequestParam Integer minimumTurnaroundMinutes,
+                                       @RequestParam Integer maximumCheckInHoursBeforeDeparture,   // YENİ PARAMETRE
+                                       @RequestParam Integer minimumCheckInMinutesBeforeDeparture, // YENİ PARAMETRE
                                        RedirectAttributes redirectAttributes) {
         Integer resultCode = 0;
         try {
@@ -56,7 +59,9 @@ public class AdminSystemSettingsController {
                     archiveDataEnabled,
                     archiveRetentionDays,
                     minimumFlightCapacity,
-                    minimumTurnaroundMinutes
+                    minimumTurnaroundMinutes,
+                    maximumCheckInHoursBeforeDeparture,
+                    minimumCheckInMinutesBeforeDeparture
             );
             if (resultCode == 0) {
                 redirectAttributes.addFlashAttribute("success", "System settings updated successfully!");

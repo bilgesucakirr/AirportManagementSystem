@@ -13,11 +13,13 @@ public interface ApplicationSettingRepository extends JpaRepository<ApplicationS
     @Query(value = "EXEC sp_GetApplicationSettings", nativeQuery = true)
     Optional<ApplicationSetting> getApplicationSettings();
 
-    @Procedure(procedureName = "sp_UpdateApplicationSettings")
+    @Procedure(procedureName = "sp_UpdateApplicationSettings", outputParameterName = "ResultCode")
     Integer updateApplicationSettings(@Param("BackupDirectory") String backupDirectory,
                                       @Param("EmailAlertsRecipient") String emailAlertsRecipient,
                                       @Param("ArchiveDataEnabled") Boolean archiveDataEnabled,
                                       @Param("ArchiveRetentionDays") Integer archiveRetentionDays,
                                       @Param("MinimumFlightCapacity") Integer minimumFlightCapacity,
-                                      @Param("MinimumTurnaroundMinutes") Integer minimumTurnaroundMinutes);
+                                      @Param("MinimumTurnaroundMinutes") Integer minimumTurnaroundMinutes,
+                                      @Param("MaximumCheckInHoursBeforeDeparture") Integer maximumCheckInHoursBeforeDeparture,
+                                      @Param("MinimumCheckInMinutesBeforeDeparture") Integer minimumCheckInMinutesBeforeDeparture);
 }

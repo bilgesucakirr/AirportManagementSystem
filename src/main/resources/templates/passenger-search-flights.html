@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Turkish Airlines – Search Flights</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: linear-gradient(135deg, #f0f2f5 0%, #e0e6ed 100%);
+      min-height: 100vh;
+      color: #333;
+      overflow-x: hidden;
+      opacity: 0;
+      animation: fadeInPage 1s ease-out forwards;
+    }
+    @keyframes fadeInPage {
+      to { opacity: 1; }
+    }
+
+    .navbar {
+      background-color: #003057;
+      padding: 0.8rem 1.5rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      position: relative;
+      z-index: 10;
+    }
+    .navbar-brand img {
+      height: 45px;
+      margin-right: 10px;
+    }
+    .navbar-brand span {
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+    }
+    .nav-link {
+      color: rgba(255, 255, 255, 0.9) !important;
+      font-weight: 600;
+      margin-left: 25px;
+      font-size: 1.05rem;
+      transition: color 0.3s ease-in-out, transform 0.2s ease-in-out;
+    }
+    .nav-link:hover {
+      color: #FFD700 !important;
+      transform: translateY(-2px);
+    }
+
+    .main-content {
+      padding: 50px 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .page-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 3.2rem;
+      font-weight: 900;
+      color: #003057;
+      margin-bottom: 20px;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      position: relative;
+      display: inline-block;
+    }
+    .page-title::after {
+      content: '';
+      display: block;
+      width: 80px;
+      height: 5px;
+      background-color: #C90016;
+      margin: 10px auto 0;
+      border-radius: 5px;
+    }
+
+    /* Search Form Card */
+    .search-form-card {
+      background-color: #FFFFFF;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      padding: 40px 30px;
+      margin-bottom: 50px;
+      text-align: left;
+      border: 1px solid #eee;
+      animation: fadeInUp 0.8s ease-out 0.5s backwards;
+    }
+    .form-label {
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .form-control, .form-select {
+      border-radius: 8px;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #C90016;
+      box-shadow: 0 0 0 0.25rem rgba(201, 0, 22, 0.25);
+    }
+    .btn-primary {
+      background-color: #C90016;
+      border-color: #C90016;
+      padding: 12px 35px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 15px rgba(201, 0, 22, 0.3);
+    }
+    .btn-primary:hover {
+      background-color: #a00013;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(201, 0, 22, 0.4);
+      color: #FFFFFF;
+    }
+
+    /* Flight Results Card (Replacing Table with Cards for better UX) */
+    .flight-results-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px;
+      margin-top: 40px;
+      animation: fadeInUp 0.8s ease-out 0.7s backwards;
+    }
+    .flight-card {
+      background-color: #FFFFFF;
+      border-radius: 18px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+      text-align: left;
+      border: 1px solid #eee;
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .flight-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    .flight-card h5 {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      color: #003057;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+    .flight-card .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .flight-card .info-item {
+      display: flex;
+      align-items: center;
+      font-size: 1rem;
+      color: #555;
+      font-weight: 500;
+    }
+    .flight-card .info-item i {
+      color: #C90016;
+      margin-right: 8px;
+      font-size: 1.2em;
+    }
+    .flight-card .route-info {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .flight-card .route-info .airport-code {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #C90016;
+    }
+    .flight-card .route-info .arrow-icon {
+      font-size: 1.5rem;
+      color: #003057;
+      margin: 0 10px;
+    }
+    .flight-card .route-info .airport-name {
+      font-size: 0.9rem;
+      color: #777;
+    }
+    .flight-card .available-seats {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #007bff;
+      margin-top: 15px;
+      text-align: center;
+    }
+    .flight-card .actions {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .flight-card .btn-select {
+      background-color: #003057;
+      color: #FFFFFF;
+      border-color: #003057;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0,48,87,0.2);
+    }
+    .flight-card .btn-select:hover {
+      background-color: #001f3f;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,48,87,0.3);
+      color: #FFFFFF;
+    }
+    .status-badge {
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      color: white;
+      display: inline-block;
+    }
+    .status-Scheduled { background-color: #007bff; }
+    .status-Delayed { background-color: #ffc107; color: #333; }
+    .status-Cancelled { background-color: #dc3545; }
+    .status-Departed { background-color: #28a745; }
+    .status-Arrived { background-color: #6c757d; }
+
+    /* Animasyonlar */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 768px) {
+      .page-title { font-size: 2.5rem; }
+      .search-form-card, .flight-card { padding: 30px 20px; }
+      .flight-card .route-info .airport-code { font-size: 1.8rem; }
+      .flight-card .info-item { font-size: 0.9rem; }
+      .nav-link { margin-left: 10px; font-size: 0.95rem; }
+      .navbar-brand span { font-size: 1.2rem; }
+      .navbar-brand img { height: 35px; }
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/passenger/dashboard">
+      <img src="/img/white-logo.png" alt="THY Logo">
+      <span>Turkish Airlines</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="/passenger/profile"><i class="fas fa-user-circle"></i> My Profile</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/passenger/my-bookings"><i class="fas fa-ticket-alt"></i> My Bookings</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active" href="/passenger/flights/search"><i class="fas fa-plane-departure"></i> Search & Book Flights</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="main-content">
+  <h1 class="page-title">Search Flights</h1>
+
+  <div th:if="${success}" class="alert alert-success" role="alert" th:text="${success}"></div>
+  <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+  <div class="search-form-card">
+    <form th:action="@{/passenger/flights/search}" method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="departureAirportCode" class="form-label">Departure Airport</label>
+          <select class="form-select" id="departureAirportCode" name="departureAirportCode">
+            <option value="">Any</option>
+            <option th:each="airport : ${airports}"
+                    th:value="${airport.code}"
+                    th:text="${airport.airportName + ' (' + airport.code + ')'}"
+                    th:selected="${airport.code == departureAirportCode}">
+            </option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="arrivalAirportCode" class="form-label">Arrival Airport</label>
+          <select class="form-select" id="arrivalAirportCode" name="arrivalAirportCode">
+            <option value="">Any</option>
+            <option th:each="airport : ${airports}"
+                    th:value="${airport.code}"
+                    th:text="${airport.airportName + ' (' + airport.code + ')'}"
+                    th:selected="${airport.code == arrivalAirportCode}">
+            </option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="departureDate" class="form-label">Departure Date</label>
+          <input type="date" class="form-control" id="departureDate" name="departureDate"
+                 th:value="${(departureDate != null) ? #temporals.format(departureDate, 'yyyy-MM-dd') : ''}"
+                 th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="returnDate" class="form-label">Return Date (Optional)</label>
+          <input type="date" class="form-control" id="returnDate" name="returnDate"
+                 th:value="${(returnDate != null) ? #temporals.format(returnDate, 'yyyy-MM-dd') : ''}"
+                 th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+        </div>
+        <div class="col-md-6">
+          <label for="minAvailableSeats" class="form-label">Minimum Available Seats</label>
+          <input type="number" class="form-control" id="minAvailableSeats" name="minAvailableSeats"
+                 th:value="${minAvailableSeats}" min="1" required>
+        </div>
+        <div class="col-12 mt-4 text-center">
+          <button type="submit" class="btn btn-lg btn-primary"><i class="fas fa-search"></i> Search Flights</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <h3 class="page-title" style="font-size: 2rem;">Available Flights</h3>
+  <div th:if="${flights.isEmpty()}" class="alert alert-info" role="alert">
+    No flights found matching your criteria.
+  </div>
+
+  <div th:if="${!flights.isEmpty()}" class="flight-results-container">
+    <div class="flight-card" th:each="flight : ${flights}">
+      <div>
+        <h5>Flight <span th:text="${flight.flightID}"></span></h5>
+        <div class="info-row">
+          <div class="info-item"><i class="fas fa-plane-departure"></i> Departure: <span th:text="${#temporals.format(flight.getDepartureLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></span></div>
+          <div class="info-item"><i class="fas fa-plane-arrival"></i> Arrival: <span th:text="${#temporals.format(flight.getArrivalLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></span></div>
+        </div>
+        <div class="route-info">
+          <span class="airport-code" th:text="${flight.departureAirportCode}"></span>
+          <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
+          <span class="airport-code" th:text="${flight.arrivalAirportCode}"></span>
+          <br>
+          <span class="airport-name" th:text="${flight.departureAirportName}"></span> - <span class="airport-name" th:text="${flight.arrivalAirportName}"></span>
+        </div>
+        <div class="info-row">
+          <div class="info-item"><i class="fas fa-tag"></i> Status: <span class="status-badge" th:classappend="'status-' + ${flight.status}" th:text="${flight.status}"></span></div>
+          <div class="info-item"><i class="fas fa-chair"></i> Aircraft: <span th:text="${flight.aircraftModel}"></span> (<span th:text="${flight.aircraftTailNumber}"></span>)</div>
+        </div>
+        <div class="available-seats">
+          <span th:text="${flight.availableSeats}"></span> seats available
+        </div>
+      </div>
+      <div class="actions">
+        <a th:href="@{/passenger/flights/select-seat(flightID=${flight.flightID})}" class="btn btn-select">
+          Select Flight <i class="fas fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

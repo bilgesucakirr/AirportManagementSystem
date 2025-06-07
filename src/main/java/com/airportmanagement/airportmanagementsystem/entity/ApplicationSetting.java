@@ -20,4 +20,7 @@ public class ApplicationSetting {
     private Integer archiveRetentionDays;
     private Integer minimumFlightCapacity;
     private Integer minimumTurnaroundMinutes;
+
+    private Integer maximumCheckInHoursBeforeDeparture;
+    private Integer minimumCheckInMinutesBeforeDeparture;
 }

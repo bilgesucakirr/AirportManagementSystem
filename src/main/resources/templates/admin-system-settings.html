@@ -175,6 +175,18 @@
             <div class="form-text">Minimum time an aircraft must have between an arrival and its next departure.</div>
           </div>
 
+          <div class="mb-3">
+            <label for="maximumCheckInHoursBeforeDeparture" class="form-label">Maximum Check-in Hours Before Departure</label>
+            <input type="number" class="form-control" id="maximumCheckInHoursBeforeDeparture" name="maximumCheckInHoursBeforeDeparture" th:value="${settings.maximumCheckInHoursBeforeDeparture}" min="0">
+            <div class="form-text">Maximum hours before flight departure when online check-in is available.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="minimumCheckInMinutesBeforeDeparture" class="form-label">Minimum Check-in Minutes Before Departure</label>
+            <input type="number" class="form-control" id="minimumCheckInMinutesBeforeDeparture" name="minimumCheckInMinutesBeforeDeparture" th:value="${settings.minimumCheckInMinutesBeforeDeparture}" min="0">
+            <div class="form-text">Minimum minutes before flight departure when online check-in is available.</div>
+          </div>
+
           <button type="submit" class="btn btn-primary">Save Settings</button>
         </form>
       </div>
