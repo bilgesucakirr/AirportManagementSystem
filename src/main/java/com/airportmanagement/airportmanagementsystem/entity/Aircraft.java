@@ -16,4 +16,6 @@ public class Aircraft {
 
     private String model;
     private Integer capacity;
+    private String tailNumber;
+    private Integer rangeMiles;
 }

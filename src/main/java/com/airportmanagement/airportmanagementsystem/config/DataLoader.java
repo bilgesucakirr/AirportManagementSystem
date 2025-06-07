@@ -1,9 +1,11 @@
 package com.airportmanagement.airportmanagementsystem.config;
 
+import com.airportmanagement.airportmanagementsystem.entity.ApplicationSetting;
 import com.airportmanagement.airportmanagementsystem.entity.Passenger;
 import com.airportmanagement.airportmanagementsystem.entity.Role;
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.entity.UserRole;
+import com.airportmanagement.airportmanagementsystem.repository.ApplicationSettingRepository;
 import com.airportmanagement.airportmanagementsystem.repository.PassengerRepository;
 import com.airportmanagement.airportmanagementsystem.repository.RoleRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
@@ -29,6 +31,9 @@ public class DataLoader {
 
     @Autowired
     private PassengerRepository passengerRepo;
+
+    @Autowired
+    private ApplicationSettingRepository appSettingRepo;
 
     @PostConstruct
     public void init() {
@@ -91,5 +96,20 @@ public class DataLoader {
                 }
             }
         });
+
+
+
+
+        if (appSettingRepo.count() == 0) {
+            ApplicationSetting defaultSettings = ApplicationSetting.builder()
+
+                    .backupDirectory("C:\\SQLBackups\\AirportDb")
+                    .emailAlertsRecipient("admin@thy.com")
+                    .archiveDataEnabled(false)
+                    .archiveRetentionDays(365)
+                    .minimumFlightCapacity(100)
+                    .build();
+            appSettingRepo.save(defaultSettings);
+        }
     }
 }

@@ -17,4 +17,5 @@ public class Airport {
     private String airportName;
     private String location;
     private String code;
+    private String airportType;
 }

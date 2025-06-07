@@ -4,8 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
+import java.sql.Timestamp;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,6 +13,6 @@ public class UserWithRoleDTO {
     private String fullName;
     private String email;
     private String phoneNumber;
-    private LocalDateTime registrationDate;
+    private Timestamp registrationDate;
     private String roles;
 }
