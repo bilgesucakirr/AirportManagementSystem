@@ -40,12 +40,10 @@ public interface FlightRepository extends JpaRepository<Flight, Integer> {
             "@DepartureAirportCode = :departureAirportCode, " +
             "@ArrivalAirportCode = :arrivalAirportCode, " +
             "@DepartureDate = :departureDate, " +
-            "@ReturnDate = :returnDate, " +
             "@MinAvailableSeats = :minAvailableSeats",
             nativeQuery = true)
     List<FlightSearchDTO> searchAvailableFlights(@Param("departureAirportCode") String departureAirportCode,
                                                  @Param("arrivalAirportCode") String arrivalAirportCode,
                                                  @Param("departureDate") LocalDateTime departureDate,
-                                                 @Param("returnDate") LocalDateTime returnDate,
                                                  @Param("minAvailableSeats") Integer minAvailableSeats);
 }

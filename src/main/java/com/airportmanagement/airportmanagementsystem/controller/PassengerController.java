@@ -165,8 +165,7 @@ public class PassengerController {
     public String searchFlights(HttpSession session,
                                 @RequestParam(required = false) String departureAirportCode,
                                 @RequestParam(required = false) String arrivalAirportCode,
-                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate,
-                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
+                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate,
                                 @RequestParam(defaultValue = "1") Integer minAvailableSeats,
                                 Model model) {
         if (!checkPassengerRole(session)) {
@@ -179,20 +178,16 @@ public class PassengerController {
             model.addAttribute("departureAirportCode", departureAirportCode);
             model.addAttribute("arrivalAirportCode", arrivalAirportCode);
             model.addAttribute("departureDate", departureDate);
-            model.addAttribute("returnDate", returnDate);
             model.addAttribute("minAvailableSeats", minAvailableSeats);
             return "passenger-search-flights";
         }
 
         LocalDateTime departureDateTime = departureDate != null ? departureDate.atStartOfDay() : null;
-        LocalDateTime returnDateTime = returnDate != null ? returnDate.atStartOfDay() : null;
-
 
         List<FlightSearchDTO> flights = flightRepo.searchAvailableFlights(
                 departureAirportCode,
                 arrivalAirportCode,
                 departureDateTime,
-                returnDateTime,
                 minAvailableSeats
         );
         model.addAttribute("flights", flights);
@@ -202,7 +197,6 @@ public class PassengerController {
         model.addAttribute("departureAirportCode", departureAirportCode);
         model.addAttribute("arrivalAirportCode", arrivalAirportCode);
         model.addAttribute("departureDate", departureDate);
-        model.addAttribute("returnDate", returnDate);
         model.addAttribute("minAvailableSeats", minAvailableSeats);
 
         return "passenger-search-flights";
@@ -218,7 +212,7 @@ public class PassengerController {
             return "redirect:/login?error=unauthorized";
         }
 
-        List<FlightSearchDTO> flightDetailsList = flightRepo.searchAvailableFlights(null, null, null, null, 0);
+        List<FlightSearchDTO> flightDetailsList = flightRepo.searchAvailableFlights(null, null, null, 0);
         Optional<FlightSearchDTO> flightDetailsOptional = flightDetailsList.stream()
                 .filter(f -> f.getFlightID().equals(flightID))
                 .findFirst();
@@ -235,7 +229,6 @@ public class PassengerController {
             return "redirect:/passenger/flights/search";
         }
 
-
         List<SeatAvailabilityDTO> seats = seatRepo.getFlightAvailableSeats(flightID);
 
         List<SeatAvailabilityDTO> sortedSeats = seats.stream()
@@ -248,21 +241,17 @@ public class PassengerController {
                 }).thenComparing(SeatAvailabilityDTO::getSeatNumber))
                 .collect(Collectors.toList());
 
-
         model.addAttribute("flight", flight);
         model.addAttribute("seats", sortedSeats);
         User loggedUser = (User) session.getAttribute("loggedUser");
         passengerRepo.findByUser(loggedUser).ifPresent(p -> model.addAttribute("passengerID", p.getPassengerID()));
 
-        // Luggage settings for dynamic pricing
         Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
         model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
         model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
 
-
         return "passenger-seat-selection";
     }
-
 
     @PostMapping("/book")
     public String bookTicket(HttpSession session,
@@ -304,7 +293,6 @@ public class PassengerController {
             return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
         }
     }
-
 
     @GetMapping("/my-bookings")
     @Transactional(readOnly = true)
@@ -357,13 +345,11 @@ public class PassengerController {
             int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
 
             boolean isCheckInAvailableNow = false;
-
             if (!booking.isCheckedIn()) {
                 LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
                 LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
                 isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime));
             }
-
 
             model.addAttribute("booking", booking);
             model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
@@ -415,7 +401,6 @@ public class PassengerController {
         }
         return "redirect:/passenger/my-bookings";
     }
-
 
     @PostMapping("/luggage/add")
     public String addLuggage(HttpSession session,

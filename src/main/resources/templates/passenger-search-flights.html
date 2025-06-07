@@ -115,6 +115,16 @@
       box-shadow: 0 8px 25px rgba(201, 0, 22, 0.4);
       color: #FFFFFF;
     }
+    .btn-outline-secondary { /* Swap button style */
+      color: #6c757d;
+      border-color: #6c757d;
+      background-color: #fff;
+    }
+    .btn-outline-secondary:hover {
+      background-color: #6c757d;
+      color: #fff;
+    }
+
 
     /* Flight Results Card (Replacing Table with Cards for better UX) */
     .flight-results-container {
@@ -278,8 +288,8 @@
 
   <div class="search-form-card">
     <form th:action="@{/passenger/flights/search}" method="post">
-      <div class="row g-3">
-        <div class="col-md-6">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
           <label for="departureAirportCode" class="form-label">Departure Airport</label>
           <select class="form-select" id="departureAirportCode" name="departureAirportCode">
             <option value="">Any</option>
@@ -290,7 +300,12 @@
             </option>
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-2 d-flex justify-content-center">
+          <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="swapAirportsBtn" title="Swap Departure and Arrival Airports">
+            <i class="fas fa-exchange-alt"></i>
+          </button>
+        </div>
+        <div class="col-md-5">
           <label for="arrivalAirportCode" class="form-label">Arrival Airport</label>
           <select class="form-select" id="arrivalAirportCode" name="arrivalAirportCode">
             <option value="">Any</option>
@@ -302,17 +317,12 @@
           </select>
         </div>
         <div class="col-md-6">
-          <label for="departureDate" class="form-label">Departure Date</label>
+          <label for="departureDate" class="form-label">Departure Date (Optional)</label>
           <input type="date" class="form-control" id="departureDate" name="departureDate"
                  th:value="${(departureDate != null) ? #temporals.format(departureDate, 'yyyy-MM-dd') : ''}"
-                 th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}" required>
-        </div>
-        <div class="col-md-6">
-          <label for="returnDate" class="form-label">Return Date (Optional)</label>
-          <input type="date" class="form-control" id="returnDate" name="returnDate"
-                 th:value="${(returnDate != null) ? #temporals.format(returnDate, 'yyyy-MM-dd') : ''}"
                  th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
         </div>
+
         <div class="col-md-6">
           <label for="minAvailableSeats" class="form-label">Minimum Available Seats</label>
           <input type="number" class="form-control" id="minAvailableSeats" name="minAvailableSeats"
@@ -343,7 +353,7 @@
           <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
           <span class="airport-code" th:text="${flight.arrivalAirportCode}"></span>
           <br>
-          <span class="airport-name" th:text="${flight.departureAirportName}"></span> - <span class="airport-name" th:text="${flight.arrivalAirportName}"></span>
+          <span class="airport-name" th:text="${flight.departureAirportName}"></span> - <span th:text="${flight.arrivalAirportName}"></span>
         </div>
         <div class="info-row">
           <div class="info-item"><i class="fas fa-tag"></i> Status: <span class="status-badge" th:classappend="'status-' + ${flight.status}" th:text="${flight.status}"></span></div>
@@ -363,5 +373,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.getElementById('swapAirportsBtn').addEventListener('click', function() {
+    const departureAirportSelect = document.getElementById('departureAirportCode');
+    const arrivalAirportSelect = document.getElementById('arrivalAirportCode');
+
+    const temp = departureAirportSelect.value;
+    departureAirportSelect.value = arrivalAirportSelect.value;
+    arrivalAirportSelect.value = temp;
+  });
+</script>
 </body>
 </html>
