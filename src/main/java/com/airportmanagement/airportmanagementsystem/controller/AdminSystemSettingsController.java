@@ -46,6 +46,7 @@ public class AdminSystemSettingsController {
                                        @RequestParam(defaultValue = "false") Boolean archiveDataEnabled,
                                        @RequestParam Integer archiveRetentionDays,
                                        @RequestParam Integer minimumFlightCapacity,
+                                       @RequestParam Integer minimumTurnaroundMinutes,
                                        RedirectAttributes redirectAttributes) {
         Integer resultCode = 0;
         try {
@@ -54,7 +55,8 @@ public class AdminSystemSettingsController {
                     emailAlertsRecipient,
                     archiveDataEnabled,
                     archiveRetentionDays,
-                    minimumFlightCapacity
+                    minimumFlightCapacity,
+                    minimumTurnaroundMinutes
             );
             if (resultCode == 0) {
                 redirectAttributes.addFlashAttribute("success", "System settings updated successfully!");

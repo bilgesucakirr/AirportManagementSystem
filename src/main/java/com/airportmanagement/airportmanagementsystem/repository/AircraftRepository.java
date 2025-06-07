@@ -14,18 +14,21 @@ public interface AircraftRepository extends JpaRepository<Aircraft, Integer> {
     Integer addAircraft(@Param("Model") String model,
                         @Param("Capacity") Integer capacity,
                         @Param("TailNumber") String tailNumber,
-                        @Param("RangeMiles") Integer rangeMiles); // NewAircraftID kaldırıldı, metot dönüş değeri olarak gelecek
+                        @Param("RangeMiles") Integer rangeMiles);
 
     @Procedure(procedureName = "sp_UpdateAircraft")
     Integer updateAircraft(@Param("AircraftID") Integer aircraftID,
                            @Param("Model") String model,
                            @Param("Capacity") Integer capacity,
                            @Param("TailNumber") String tailNumber,
-                           @Param("RangeMiles") Integer rangeMiles); // ResultCode kaldırıldı, metot dönüş değeri olarak gelecek
+                           @Param("RangeMiles") Integer rangeMiles);
 
     @Procedure(procedureName = "sp_DeleteAircraft")
-    Integer deleteAircraft(@Param("AircraftID") Integer aircraftID); // ResultCode kaldırıldı, metot dönüş değeri olarak gelecek
+    Integer deleteAircraft(@Param("AircraftID") Integer aircraftID);
 
-    @Query(value = "EXEC sp_GetAllAircrafts", nativeQuery = true)
+    @Query(value = "EXEC sp_GetAircraftsByRange @RouteDistanceKm = 0", nativeQuery = true)
     List<Aircraft> getAllAircrafts();
+
+    @Query(value = "EXEC sp_GetAircraftsByRange @RouteDistanceKm = :routeDistanceKm", nativeQuery = true)
+    List<Aircraft> getAircraftsByRouteDistance(@Param("routeDistanceKm") Integer routeDistanceKm);
 }

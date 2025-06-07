@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Turkish Airlines – Route Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', Arial, Helvetica, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    .navbar {
+      background-color: #C90016;
+      padding: 0.1rem 1.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .navbar-brand img {
+      height: 55px;
+      margin-right: 10px;
+    }
+    .navbar-brand span {
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 1.6rem;
+      letter-spacing: 0.5px;
+    }
+    .nav-link {
+      color: rgba(255, 255, 255, 0.85) !important;
+      font-weight: 500;
+      margin-left: 15px;
+      transition: color 0.2s ease-in-out;
+    }
+    .nav-link:hover {
+      color: #FFFFFF !important;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #003057;
+      color: #fff;
+      padding-top: 20px;
+      min-height: calc(100vh - 65px);
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+    .sidebar a {
+      color: rgba(255, 255, 255, 0.7);
+      padding: 12px 20px;
+      display: block;
+      text-decoration: none;
+      transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+      font-size: 1.1rem;
+    }
+    .sidebar a:hover, .sidebar a.active {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+    }
+    .sidebar i {
+      margin-right: 10px;
+      width: 20px;
+    }
+    .main-content {
+      flex-grow: 1;
+      padding: 30px;
+    }
+    .page-title {
+      color: #003057;
+      font-weight: 800;
+      margin-bottom: 30px;
+      font-size: 2.2rem;
+      border-bottom: 3px solid #C90016;
+      padding-bottom: 10px;
+    }
+    .table-thy thead {
+      background-color: #003057;
+      color: #FFFFFF;
+    }
+    .table-thy tbody tr:nth-child(even) {
+      background-color: #e6e6e6;
+    }
+    .table-thy tbody tr:hover {
+      background-color: #d1d1d1;
+    }
+    .table-thy td, .table-thy th {
+      padding: 12px 15px;
+      vertical-align: middle;
+    }
+    .table-thy {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      margin-bottom: 40px;
+    }
+    .card-header-thy {
+      background-color: #C90016;
+      color: #FFFFFF;
+      font-weight: 700;
+      padding: 1rem 1.5rem;
+      font-size: 1.3rem;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+    .btn-action {
+      background-color: #003057;
+      color: #FFFFFF;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      transition: background-color 0.2s;
+      font-size: 0.9rem;
+    }
+    .btn-action:hover {
+      background-color: #001f3f;
+      color: #FFFFFF;
+    }
+    .btn-danger-action {
+      background-color: #dc3545;
+    }
+    .btn-danger-action:hover {
+      background-color: #c82333;
+    }
+    .modal-header-thy {
+      background-color: #C90016;
+      color: #FFFFFF;
+    }
+    .modal-footer .btn-secondary {
+      background-color: #6c757d;
+      border-color: #6c757d;
+    }
+    .modal-footer .btn-secondary:hover {
+      background-color: #5a6268;
+      border-color: #545b62;
+    }
+    .modal-footer .btn-primary {
+      background-color: #003057;
+      border-color: #003057;
+    }
+    .modal-footer .btn-primary:hover {
+      background-color: #001f3f;
+      border-color: #001f3f;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">
+      <img src="/img/white-logo.png" alt="THY Logo">
+    </a>
+    <div class="collapse navbar-collapse justify-content-end">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="d-flex">
+  <div class="sidebar">
+    <a href="/staff/dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
+    <a href="/staff/flights"><i class="fas fa-plane-departure"></i> Flight Management</a>
+    <a href="/staff/routes" class="active"><i class="fas fa-route"></i> Route Management</a>
+  </div>
+
+  <div class="main-content">
+    <h1 class="page-title">Route Management</h1>
+
+    <div th:if="${success}" class="alert alert-success" role="alert" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+
+    <div class="d-flex justify-content-end mb-3">
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRouteModal">
+        <i class="fas fa-plus-circle"></i> Add New Route
+      </button>
+    </div>
+
+    <h3 class="mt-4 mb-3" style="color: #003057;">All Routes</h3>
+    <table class="table table-striped table-hover table-thy">
+      <thead>
+      <tr>
+        <th>Route ID</th>
+        <th>Departure Airport</th>
+        <th>Arrival Airport</th>
+        <th>Estimated Duration (Minutes)</th>
+        <th>Distance (KM)</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="route : ${routes}">
+        <td th:text="${route.routeID}"></td>
+        <td><span th:text="${route.departureAirportCode}"></span> (<span th:text="${route.departureAirportName}"></span>)</td>
+        <td><span th:text="${route.arrivalAirportCode}"></span> (<span th:text="${route.arrivalAirportName}"></span>)</td>
+        <td th:text="${route.estimatedDurationMinutes}"></td>
+        <td th:text="${route.distanceKm}"></td>
+        <td>
+          <button type="button" class="btn btn-action" data-bs-toggle="modal" data-bs-target="#editRouteModal"
+                  th:data-routeid="${route.routeID}"
+                  th:data-departureairportid="${route.departureAirportID}"
+                  th:data-arrivalairportid="${route.arrivalAirportID}"
+                  th:data-estimateddurationminutes="${route.estimatedDurationMinutes}"
+                  th:data-distancekm="${route.distanceKm}">
+            <i class="fas fa-edit"></i> Edit
+          </button>
+          <form th:action="@{/staff/routes/delete}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this route? This action cannot be undone if flights are associated.');">
+            <input type="hidden" name="routeID" th:value="${route.routeID}">
+            <button type="submit" class="btn btn-danger-action"><i class="fas fa-trash-alt"></i> Delete</button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+
+    <!-- Add Route Modal -->
+    <div class="modal fade" id="addRouteModal" tabindex="-1" aria-labelledby="addRouteModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header modal-header-thy">
+            <h5 class="modal-title" id="addRouteModalLabel">Add New Route</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form th:action="@{/staff/routes/add}" method="post">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="addDepartureAirportID" class="form-label">Departure Airport</label>
+                <select class="form-select" id="addDepartureAirportID" name="departureAirportID" required>
+                  <option value="">Select Departure Airport</option>
+                  <option th:each="airport : ${airports}" th:value="${airport.airportID}" th:text="${airport.airportName + ' (' + airport.code + ')'}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="addArrivalAirportID" class="form-label">Arrival Airport</label>
+                <select class="form-select" id="addArrivalAirportID" name="arrivalAirportID" required>
+                  <option value="">Select Arrival Airport</option>
+                  <option th:each="airport : ${airports}" th:value="${airport.airportID}" th:text="${airport.airportName + ' (' + airport.code + ')'}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="addEstimatedDurationMinutes" class="form-label">Estimated Duration (Minutes)</label>
+                <input type="number" class="form-control" id="addEstimatedDurationMinutes" name="estimatedDurationMinutes" required min="1">
+              </div>
+              <div class="mb-3">
+                <label for="addDistanceKm" class="form-label">Distance (KM)</label>
+                <input type="number" class="form-control" id="addDistanceKm" name="distanceKm" required min="0">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Add Route</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="modal fade" id="editRouteModal" tabindex="-1" aria-labelledby="editRouteModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header modal-header-thy">
+            <h5 class="modal-title" id="editRouteModalLabel">Edit Route Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form th:action="@{/staff/routes/update}" method="post">
+            <div class="modal-body">
+              <input type="hidden" id="editRouteID" name="routeID">
+              <div class="mb-3">
+                <label for="editDepartureAirportID" class="form-label">Departure Airport</label>
+                <select class="form-select" id="editDepartureAirportID" name="departureAirportID" required>
+                  <option th:each="airport : ${airports}" th:value="${airport.airportID}" th:text="${airport.airportName + ' (' + airport.code + ')'}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editArrivalAirportID" class="form-label">Arrival Airport</label>
+                <select class="form-select" id="editArrivalAirportID" name="arrivalAirportID" required>
+                  <option th:each="airport : ${airports}" th:value="${airport.airportID}" th:text="${airport.airportName + ' (' + airport.code + ')'}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editEstimatedDurationMinutes" class="form-label">Estimated Duration (Minutes)</label>
+                <input type="number" class="form-control" id="editEstimatedDurationMinutes" name="estimatedDurationMinutes" required min="1">
+              </div>
+              <div class="mb-3">
+                <label for="editDistanceKm" class="form-label">Distance (KM)</label> <!-- YENİ INPUT EKLENDİ -->
+                <input type="number" class="form-control" id="editDistanceKm" name="distanceKm" required min="0">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const editRouteModal = document.getElementById('editRouteModal');
+  editRouteModal.addEventListener('show.bs.modal', event => {
+    const button = event.relatedTarget;
+    const routeID = button.getAttribute('data-routeid');
+    const departureAirportID = button.getAttribute('data-departureairportid');
+    const arrivalAirportID = button.getAttribute('data-arrivalairportid');
+    const estimatedDurationMinutes = button.getAttribute('data-estimateddurationminutes');
+    const distanceKm = button.getAttribute('data-distancekm');
+
+    const modalRouteID = editRouteModal.querySelector('#editRouteID');
+    const modalDepartureAirportID = editRouteModal.querySelector('#editDepartureAirportID');
+    const modalArrivalAirportID = editRouteModal.querySelector('#editArrivalAirportID');
+    const modalEstimatedDurationMinutes = editRouteModal.querySelector('#editEstimatedDurationMinutes');
+    const modalDistanceKm = editRouteModal.querySelector('#editDistanceKm');
+
+    modalRouteID.value = routeID;
+    modalDepartureAirportID.value = departureAirportID;
+    modalArrivalAirportID.value = arrivalAirportID;
+    modalEstimatedDurationMinutes.value = estimatedDurationMinutes;
+    modalDistanceKm.value = distanceKm;
+  });
+</script>
+</body>
+</html>

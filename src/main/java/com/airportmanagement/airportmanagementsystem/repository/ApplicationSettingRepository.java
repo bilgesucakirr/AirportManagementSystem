@@ -18,5 +18,6 @@ public interface ApplicationSettingRepository extends JpaRepository<ApplicationS
                                       @Param("EmailAlertsRecipient") String emailAlertsRecipient,
                                       @Param("ArchiveDataEnabled") Boolean archiveDataEnabled,
                                       @Param("ArchiveRetentionDays") Integer archiveRetentionDays,
-                                      @Param("MinimumFlightCapacity") Integer minimumFlightCapacity);
+                                      @Param("MinimumFlightCapacity") Integer minimumFlightCapacity,
+                                      @Param("MinimumTurnaroundMinutes") Integer minimumTurnaroundMinutes);
 }

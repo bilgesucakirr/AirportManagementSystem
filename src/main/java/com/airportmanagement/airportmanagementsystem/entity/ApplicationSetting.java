@@ -19,4 +19,5 @@ public class ApplicationSetting {
     private Boolean archiveDataEnabled;
     private Integer archiveRetentionDays;
     private Integer minimumFlightCapacity;
+    private Integer minimumTurnaroundMinutes;
 }

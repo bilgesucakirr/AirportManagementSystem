@@ -23,4 +23,5 @@ public class Route {
     private Airport arrivalAirport;
 
     private Integer estimatedDurationMinutes;
+    private Integer distanceKm;
 }
