@@ -18,6 +18,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
@@ -46,7 +47,6 @@ public class DataLoader {
     @Autowired
     private SeatRepository seatRepo;
 
-    // SİZİN KODUNUZDAKİ MEVCUT KISIMLAR
 
     @PostConstruct
     public void init() {
@@ -120,6 +120,8 @@ public class DataLoader {
                     .minimumTurnaroundMinutes(60)
                     .maximumCheckInHoursBeforeDeparture(24)
                     .minimumCheckInMinutesBeforeDeparture(60)
+                    .standardLuggageWeightKg(20)
+                    .extraLuggageFeePerKg(BigDecimal.valueOf(5.00))
                     .build();
             appSettingRepo.save(defaultSettings);
         }
@@ -128,7 +130,7 @@ public class DataLoader {
         if (allAircrafts.isEmpty()) {
             Aircraft defaultAircraft = Aircraft.builder()
                     .model("Airbus A320-200")
-                    .capacity(180) // Default capacity
+                    .capacity(180)
                     .tailNumber("TC-JCK")
                     .rangeMiles(3300)
                     .build();

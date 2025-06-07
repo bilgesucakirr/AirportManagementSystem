@@ -4,11 +4,13 @@ import com.airportmanagement.airportmanagementsystem.dto.FlightSearchDTO;
 import com.airportmanagement.airportmanagementsystem.dto.PassengerBookingDTO;
 import com.airportmanagement.airportmanagementsystem.dto.PassengerProfileDTO;
 import com.airportmanagement.airportmanagementsystem.dto.SeatAvailabilityDTO;
+import com.airportmanagement.airportmanagementsystem.dto.LuggageDetailsDTO;
 import com.airportmanagement.airportmanagementsystem.entity.Airport;
 import com.airportmanagement.airportmanagementsystem.entity.ApplicationSetting;
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.repository.AirportRepository;
 import com.airportmanagement.airportmanagementsystem.repository.FlightRepository;
+import com.airportmanagement.airportmanagementsystem.repository.LuggageRepository;
 import com.airportmanagement.airportmanagementsystem.repository.PassengerRepository;
 import com.airportmanagement.airportmanagementsystem.repository.SeatRepository;
 import com.airportmanagement.airportmanagementsystem.repository.TicketRepository;
@@ -66,6 +68,9 @@ public class PassengerController {
 
     @Autowired
     private ApplicationSettingRepository appSettingRepo;
+
+    @Autowired
+    private LuggageRepository luggageRepo;
 
     private boolean checkPassengerRole(HttpSession session) {
         User loggedUser = (User) session.getAttribute("loggedUser");
@@ -249,6 +254,12 @@ public class PassengerController {
         User loggedUser = (User) session.getAttribute("loggedUser");
         passengerRepo.findByUser(loggedUser).ifPresent(p -> model.addAttribute("passengerID", p.getPassengerID()));
 
+        // Luggage settings for dynamic pricing
+        Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
+        model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
+        model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
+
+
         return "passenger-seat-selection";
     }
 
@@ -258,7 +269,9 @@ public class PassengerController {
                              @RequestParam Integer flightID,
                              @RequestParam Integer passengerID,
                              @RequestParam String seatNumber,
-                             @RequestParam BigDecimal price,
+                             @RequestParam BigDecimal basePrice,
+                             @RequestParam(required = false) BigDecimal luggageWeight,
+                             @RequestParam(defaultValue = "false") Boolean isExtraLuggage,
                              RedirectAttributes redirectAttributes) {
         if (!checkPassengerRole(session)) {
             return "redirect:/login?error=unauthorized";
@@ -269,7 +282,7 @@ public class PassengerController {
             return "redirect:/login";
         }
 
-        Integer newTicketId = ticketRepo.bookTicket(passengerID, flightID, seatNumber, price);
+        Integer newTicketId = ticketRepo.bookTicket(passengerID, flightID, seatNumber, basePrice, luggageWeight, isExtraLuggage);
 
         if (newTicketId != null && newTicketId > 0) {
             redirectAttributes.addFlashAttribute("success", "Ticket booked successfully! Your Ticket ID: " + newTicketId);
@@ -284,6 +297,7 @@ public class PassengerController {
                 case -5: errorMessage = "Seat is already taken. Please select another seat."; break;
                 case -6: errorMessage = "Flight is full. Please select another flight."; break;
                 case -7: errorMessage = "Cannot book this flight: it has already departed."; break;
+                case -8: errorMessage = "Failed to add initial luggage. Please try again."; break;
                 default: errorMessage = "Failed to book ticket. Please try again. Error Code: " + newTicketId; break;
             }
             redirectAttributes.addFlashAttribute("error", errorMessage);
@@ -331,6 +345,10 @@ public class PassengerController {
             boolean isCheckedIn = checkInRepo.existsByTicket_TicketID(booking.getTicketID());
             booking.setCheckedIn(isCheckedIn);
 
+            List<LuggageDetailsDTO> luggageItems = luggageRepo.getLuggageByTicketID(ticketID);
+            model.addAttribute("luggageItems", luggageItems);
+            model.addAttribute("ticketIDForLuggage", ticketID);
+
             LocalDateTime departureTime = booking.getDepartureLocalDateTime();
             LocalDateTime currentTime = LocalDateTime.now();
 
@@ -338,13 +356,20 @@ public class PassengerController {
             int maxCheckInHoursBefore = appSettings.map(ApplicationSetting::getMaximumCheckInHoursBeforeDeparture).orElse(24);
             int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
 
-            LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
-            LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
+            boolean isCheckInAvailableNow = false;
 
-            boolean isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime) && !isCheckedIn);
+            if (!booking.isCheckedIn()) {
+                LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
+                LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
+                isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime));
+            }
+
 
             model.addAttribute("booking", booking);
             model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
+
+            model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
+            model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
 
         } else {
             redirectAttributes.addFlashAttribute("error", "Booking details not found or you are not authorized to view it.");
@@ -389,5 +414,113 @@ public class PassengerController {
             redirectAttributes.addFlashAttribute("error", errorMessage);
         }
         return "redirect:/passenger/my-bookings";
+    }
+
+
+    @PostMapping("/luggage/add")
+    public String addLuggage(HttpSession session,
+                             @RequestParam Integer ticketID,
+                             @RequestParam BigDecimal weight,
+                             @RequestParam(defaultValue = "false") Boolean isExtra,
+                             RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        boolean ticketBelongsToUser = ticketRepo.findById(ticketID)
+                .map(t -> t.getPassenger().getUser().getUserID().equals(loggedUser.getUserID()))
+                .orElse(false);
+
+        if (!ticketBelongsToUser) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized luggage operation. Ticket record not found or does not belong to you.");
+            return "redirect:/passenger/my-bookings";
+        }
+
+        Integer newLuggageID = luggageRepo.addLuggage(ticketID, weight, isExtra);
+
+        if (newLuggageID != null && newLuggageID > 0) {
+            redirectAttributes.addFlashAttribute("success", "Luggage added successfully! ID: " + newLuggageID);
+        } else {
+            String errorMessage;
+            switch (newLuggageID) {
+                case -1: errorMessage = "Failed to add luggage: Ticket not found."; break;
+                case -2: errorMessage = "Failed to add luggage: Weight must be positive."; break;
+                default: errorMessage = "Failed to add luggage. Please try again. Error Code: " + newLuggageID; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+        }
+        return "redirect:/passenger/booking-details?ticketID=" + ticketID;
+    }
+
+    @PostMapping("/luggage/update")
+    public String updateLuggage(HttpSession session,
+                                @RequestParam Integer luggageID,
+                                @RequestParam BigDecimal weight,
+                                @RequestParam(defaultValue = "false") Boolean isExtra,
+                                RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        Optional<Integer> ticketIdForRedirectOpt = luggageRepo.findById(luggageID)
+                .filter(l -> l.getTicket().getPassenger().getUser().getUserID().equals(loggedUser.getUserID()))
+                .map(l -> l.getTicket().getTicketID());
+
+        if (ticketIdForRedirectOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized luggage operation. Luggage record not found or does not belong to you.");
+            return "redirect:/passenger/my-bookings";
+        }
+        Integer ticketIdForRedirect = ticketIdForRedirectOpt.get();
+
+        Integer resultCode = luggageRepo.updateLuggage(luggageID, weight, isExtra);
+
+        if (resultCode == 0) {
+            redirectAttributes.addFlashAttribute("success", "Luggage updated successfully!");
+        } else {
+            String errorMessage;
+            switch (resultCode) {
+                case -1: errorMessage = "Failed to update luggage: Luggage item not found."; break;
+                case -2: errorMessage = "Failed to update luggage: Weight must be positive."; break;
+                default: errorMessage = "Failed to update luggage. Please try again. Error Code: " + resultCode; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+        }
+        return "redirect:/passenger/booking-details?ticketID=" + ticketIdForRedirect;
+    }
+
+    @PostMapping("/luggage/delete")
+    public String deleteLuggage(HttpSession session,
+                                @RequestParam Integer luggageID,
+                                RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        Optional<Integer> ticketIdForRedirectOpt = luggageRepo.findById(luggageID)
+                .filter(l -> l.getTicket().getPassenger().getUser().getUserID().equals(loggedUser.getUserID()))
+                .map(l -> l.getTicket().getTicketID());
+
+        if (ticketIdForRedirectOpt.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized luggage operation. Luggage record not found or does not belong to you.");
+            return "redirect:/passenger/my-bookings";
+        }
+        Integer ticketIdForRedirect = ticketIdForRedirectOpt.get();
+
+        Integer resultCode = luggageRepo.deleteLuggage(luggageID);
+
+        if (resultCode == 0) {
+            redirectAttributes.addFlashAttribute("success", "Luggage deleted successfully!");
+        } else {
+            String errorMessage;
+            switch (resultCode) {
+                case -1: errorMessage = "Failed to delete luggage: Luggage item not found."; break;
+                default: errorMessage = "Failed to delete luggage. Please try again. Error Code: " + resultCode; break;
+            }
+            redirectAttributes.addFlashAttribute("error", errorMessage);
+        }
+        return "redirect:/passenger/booking-details?ticketID=" + ticketIdForRedirect;
     }
 }

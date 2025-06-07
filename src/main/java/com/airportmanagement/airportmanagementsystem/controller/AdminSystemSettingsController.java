@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Controller
 @RequestMapping("/admin")
 public class AdminSystemSettingsController {
@@ -48,8 +50,10 @@ public class AdminSystemSettingsController {
                                        @RequestParam Integer archiveRetentionDays,
                                        @RequestParam Integer minimumFlightCapacity,
                                        @RequestParam Integer minimumTurnaroundMinutes,
-                                       @RequestParam Integer maximumCheckInHoursBeforeDeparture,   // YENİ PARAMETRE
-                                       @RequestParam Integer minimumCheckInMinutesBeforeDeparture, // YENİ PARAMETRE
+                                       @RequestParam Integer maximumCheckInHoursBeforeDeparture,
+                                       @RequestParam Integer minimumCheckInMinutesBeforeDeparture,
+                                       @RequestParam Integer standardLuggageWeightKg,
+                                       @RequestParam BigDecimal extraLuggageFeePerKg,
                                        RedirectAttributes redirectAttributes) {
         Integer resultCode = 0;
         try {
@@ -61,7 +65,9 @@ public class AdminSystemSettingsController {
                     minimumFlightCapacity,
                     minimumTurnaroundMinutes,
                     maximumCheckInHoursBeforeDeparture,
-                    minimumCheckInMinutesBeforeDeparture
+                    minimumCheckInMinutesBeforeDeparture,
+                    standardLuggageWeightKg,
+                    extraLuggageFeePerKg
             );
             if (resultCode == 0) {
                 redirectAttributes.addFlashAttribute("success", "System settings updated successfully!");

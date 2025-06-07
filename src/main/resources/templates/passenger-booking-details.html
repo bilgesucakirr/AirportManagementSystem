@@ -262,7 +262,7 @@
             <i class="fas fa-long-arrow-alt-right arrow-icon"></i>
             <span class="airport-code" th:text="${booking.arrivalAirportCode}"></span>
             <br>
-            <span class="airport-name" th:text="${booking.departureAirportName}"></span> - <span class="airport-name" th:text="${booking.arrivalAirportName}"></span>
+            <span class="airport-name" th:text="${booking.departureAirportName}"></span> - <span th:text="${booking.arrivalAirportName}"></span>
         </div>
         <div class="row">
             <div class="col-md-6">
@@ -284,13 +284,214 @@
             </form>
             <a th:href="@{/passenger/my-bookings}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back to My Bookings</a>
         </div>
+
+
+        <!-- NEW: Luggage Information Section -->
+        <div class="mt-5 pt-4" style="border-top: 1px solid #eee;">
+            <h3><i class="fas fa-suitcase-rolling"></i> Luggage Information</h3>
+            <input type="hidden" id="ticketIDForLuggage" th:value="${ticketIDForLuggage}"> <!-- Hidden field for ticketID -->
+
+            <div th:if="${luggageItems.isEmpty()}" class="alert alert-info mt-3" role="alert">
+                No luggage registered for this ticket yet.
+            </div>
+
+            <table th:unless="${luggageItems.isEmpty()}" class="table table-striped table-hover mt-3">
+                <thead>
+                <tr>
+                    <th>Luggage ID</th>
+                    <th>Weight (KG)</th>
+                    <th>Type</th>
+                    <th>Fee</th>
+                    <th>Checked-in?</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${luggageItems}">
+                    <td th:text="${item.luggageID}"></td>
+                    <td th:text="${item.weight}"></td>
+                    <td th:text="${item.luggageType}"></td>
+                    <td th:text="${#numbers.formatCurrency(item.calculatedFee)}"></td>
+                    <td>
+                        <span th:if="${item.checkInID != null}" class="badge bg-success">Yes</span>
+                        <span th:unless="${item.checkInID != null}" class="badge bg-warning text-dark">No</span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#editLuggageModal"
+                                th:data-luggageid="${item.luggageID}"
+                                th:data-weight="${item.weight}"
+                                th:data-isextra="${item.isExtra}">
+                            Edit
+                        </button>
+                        <form th:action="@{/passenger/luggage/delete}" method="post" style="display:inline;">
+                            <input type="hidden" name="luggageID" th:value="${item.luggageID}">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this luggage item?');">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-4 text-center">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLuggageModal">
+                    <i class="fas fa-plus-circle"></i> Add New Luggage
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div th:unless="${booking}" class="alert alert-info" role="alert">
-        No booking details found.
+    <!-- Add Luggage Modal -->
+    <div class="modal fade" id="addLuggageModal" tabindex="-1" aria-labelledby="addLuggageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-header-thy">
+                    <h5 class="modal-title" id="addLuggageModalLabel">Add New Luggage Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/passenger/luggage/add}" method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="ticketID" th:value="${ticketIDForLuggage}">
+                        <div class="mb-3">
+                            <label for="addWeight" class="form-label">Weight (KG)</label>
+                            <input type="number" step="0.1" class="form-control" id="addWeight" name="weight" required min="0.1">
+                            <div class="form-text">Standard allowance: <span th:text="${standardLuggageWeightKg}"></span> KG.</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="addIsExtra" name="isExtra">
+                            <label class="form-check-label" for="addIsExtra">Mark as Extra Luggage (may incur fees)</label>
+                        </div>
+                        <div class="mt-3 text-start">
+                            <p><strong>Estimated Luggage Fee:</strong> <span id="addEstimatedLuggageFee">$0.00</span></p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add Luggage</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Edit Luggage Modal -->
+    <div class="modal fade" id="editLuggageModal" tabindex="-1" aria-labelledby="editLuggageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-header-thy">
+                    <h5 class="modal-title" id="editLuggageModalLabel">Edit Luggage Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/passenger/luggage/update}" method="post">
+                    <div class="modal-body">
+                        <input type="hidden" id="editLuggageID" name="luggageID">
+                        <div class="mb-3">
+                            <label for="editWeight" class="form-label">Weight (KG)</label>
+                            <input type="number" step="0.1" class="form-control" id="editWeight" name="weight" required min="0.1">
+                            <div class="form-text">Standard allowance: <span th:text="${standardLuggageWeightKg}"></span> KG.</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="editIsExtra" name="isExtra">
+                            <label class="form-check-label" for="editIsExtra">Mark as Extra Luggage (may incur fees)</label>
+                        </div>
+                        <div class="mt-3 text-start">
+                            <p><strong>Estimated Luggage Fee:</strong> <span id="editEstimatedLuggageFee">$0.00</span></p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+
+        const standardLuggageWeightKg = parseFloat(/*[[${standardLuggageWeightKg}]]*/ 20);
+        const extraLuggageFeePerKg = parseFloat(/*[[${extraLuggageFeePerKg}]]*/ 5.00);
+
+        function calculateLuggageFee(weight, isExtra) {
+            let fee = 0;
+            if (weight > 0) {
+                if (isExtra) {
+                    fee = 10.00;
+                }
+                if (weight > standardLuggageWeightKg) {
+                    fee += (weight - standardLuggageWeightKg) * extraLuggageFeePerKg;
+                }
+            }
+            return fee;
+        }
+
+        const addLuggageModal = document.getElementById('addLuggageModal');
+        addLuggageModal.addEventListener('show.bs.modal', event => {
+            const addWeightInput = addLuggageModal.querySelector('#addWeight');
+            const addIsExtraCheckbox = addLuggageModal.querySelector('#addIsExtra');
+
+            addWeightInput.value = '0';
+            addIsExtraCheckbox.checked = false;
+
+            updateAddLuggageFee();
+
+            addWeightInput.addEventListener('input', updateAddLuggageFee);
+            addIsExtraCheckbox.addEventListener('change', updateAddLuggageFee);
+        });
+
+        addLuggageModal.addEventListener('hidden.bs.modal', event => {
+
+            const addWeightInput = addLuggageModal.querySelector('#addWeight');
+            const addIsExtraCheckbox = addLuggageModal.querySelector('#addIsExtra');
+            addWeightInput.removeEventListener('input', updateAddLuggageFee);
+            addIsExtraCheckbox.removeEventListener('change', updateAddLuggageFee);
+        });
+
+        function updateAddLuggageFee() {
+            const addWeight = parseFloat(addLuggageModal.querySelector('#addWeight').value) || 0;
+            const addIsExtra = addLuggageModal.querySelector('#addIsExtra').checked;
+            const fee = calculateLuggageFee(addWeight, addIsExtra);
+            addLuggageModal.querySelector('#addEstimatedLuggageFee').textContent = `$${fee.toFixed(2)}`;
+        }
+
+
+        const editLuggageModal = document.getElementById('editLuggageModal');
+        editLuggageModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const luggageID = button.getAttribute('data-luggageid');
+            const weight = parseFloat(button.getAttribute('data-weight'));
+            const isExtra = button.getAttribute('data-isextra') === 'true';
+
+            const modalLuggageID = editLuggageModal.querySelector('#editLuggageID');
+            const modalWeight = editLuggageModal.querySelector('#editWeight');
+            const modalIsExtra = editLuggageModal.querySelector('#editIsExtra');
+
+            modalLuggageID.value = luggageID;
+            modalWeight.value = weight;
+            modalIsExtra.checked = isExtra;
+
+
+            updateEditLuggageFee();
+
+
+            modalWeight.addEventListener('input', updateEditLuggageFee);
+            modalIsExtra.addEventListener('change', updateEditLuggageFee);
+        });
+
+        editLuggageModal.addEventListener('hidden.bs.modal', event => {
+
+            const modalWeight = editLuggageModal.querySelector('#editWeight');
+            const modalIsExtra = editLuggageModal.querySelector('#editIsExtra');
+            modalWeight.removeEventListener('input', updateEditLuggageFee);
+            modalIsExtra.removeEventListener('change', updateEditLuggageFee);
+        });
+
+        function updateEditLuggageFee() {
+            const editWeight = parseFloat(editLuggageModal.querySelector('#editWeight').value) || 0;
+            const editIsExtra = editLuggageModal.querySelector('#editIsExtra').checked;
+            const fee = calculateLuggageFee(editWeight, editIsExtra);
+            editLuggageModal.querySelector('#editEstimatedLuggageFee').textContent = `$${fee.toFixed(2)}`;
+        }
+    </script>
 </body>
 </html>

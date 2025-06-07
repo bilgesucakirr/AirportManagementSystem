@@ -2,6 +2,7 @@ package com.airportmanagement.airportmanagementsystem.controller;
 
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.repository.FlightRepository;
+// import com.airportmanagement.airportmanagementsystem.repository.LuggageRepository; // KALDIRILDI
 import com.airportmanagement.airportmanagementsystem.repository.PassengerRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
@@ -25,6 +26,7 @@ public class AdminDashboardController {
 
     @Autowired
     private FlightRepository flightRepo;
+
 
     @GetMapping("/admin/dashboard")
     public String showAdminDashboard(HttpSession session, Model model) {

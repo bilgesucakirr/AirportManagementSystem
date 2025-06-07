@@ -2,6 +2,7 @@ package com.airportmanagement.airportmanagementsystem.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 
 @Entity
 @Data
@@ -23,4 +24,7 @@ public class ApplicationSetting {
 
     private Integer maximumCheckInHoursBeforeDeparture;
     private Integer minimumCheckInMinutesBeforeDeparture;
+
+    private Integer standardLuggageWeightKg;
+    private BigDecimal extraLuggageFeePerKg;
 }

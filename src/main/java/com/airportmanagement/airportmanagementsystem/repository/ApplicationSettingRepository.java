@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.query.Procedure;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface ApplicationSettingRepository extends JpaRepository<ApplicationSetting, Integer> {
@@ -21,5 +22,7 @@ public interface ApplicationSettingRepository extends JpaRepository<ApplicationS
                                       @Param("MinimumFlightCapacity") Integer minimumFlightCapacity,
                                       @Param("MinimumTurnaroundMinutes") Integer minimumTurnaroundMinutes,
                                       @Param("MaximumCheckInHoursBeforeDeparture") Integer maximumCheckInHoursBeforeDeparture,
-                                      @Param("MinimumCheckInMinutesBeforeDeparture") Integer minimumCheckInMinutesBeforeDeparture);
+                                      @Param("MinimumCheckInMinutesBeforeDeparture") Integer minimumCheckInMinutesBeforeDeparture,
+                                      @Param("StandardLuggageWeightKg") Integer standardLuggageWeightKg,
+                                      @Param("ExtraLuggageFeePerKg") BigDecimal extraLuggageFeePerKg);
 }

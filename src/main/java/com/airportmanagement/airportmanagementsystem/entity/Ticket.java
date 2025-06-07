@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -27,4 +28,7 @@ public class Ticket {
     private String seatNumber;
     private BigDecimal price;
     private LocalDateTime purchaseDate;
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Luggage> luggageItems;
 }

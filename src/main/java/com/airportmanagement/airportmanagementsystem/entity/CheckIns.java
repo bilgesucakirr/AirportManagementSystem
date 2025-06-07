@@ -22,4 +22,5 @@ public class CheckIns {
     @JoinColumn(name = "ticketID")
     private Ticket ticket;
     private LocalDateTime checkInTime;
+
 }

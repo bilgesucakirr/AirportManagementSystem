@@ -187,6 +187,19 @@
             <div class="form-text">Minimum minutes before flight departure when online check-in is available.</div>
           </div>
 
+          <!-- NEW Luggage related settings -->
+          <div class="mb-3">
+            <label for="standardLuggageWeightKg" class="form-label">Standard Luggage Weight Allowance (KG)</label>
+            <input type="number" class="form-control" id="standardLuggageWeightKg" name="standardLuggageWeightKg" th:value="${settings.standardLuggageWeightKg}" min="0">
+            <div class="form-text">Maximum weight for standard luggage before incurring extra fees.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="extraLuggageFeePerKg" class="form-label">Extra Luggage Fee Per KG</label>
+            <input type="number" step="0.01" class="form-control" id="extraLuggageFeePerKg" name="extraLuggageFeePerKg" th:value="${settings.extraLuggageFeePerKg}" min="0">
+            <div class="form-text">Fee applied per kg for excess luggage weight.</div>
+          </div>
+
           <button type="submit" class="btn btn-primary">Save Settings</button>
         </form>
       </div>
