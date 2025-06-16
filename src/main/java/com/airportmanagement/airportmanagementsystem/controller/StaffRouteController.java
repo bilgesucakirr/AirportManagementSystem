@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataAccessException;
 
 import java.util.List;
 
@@ -84,7 +85,7 @@ public class StaffRouteController {
                               @RequestParam Integer distanceKm,
                               RedirectAttributes redirectAttributes) {
         try {
-            Integer result = routeRepo.updateRoute(routeID, departureAirportID, arrivalAirportID, estimatedDurationMinutes, distanceKm); // PARAMETRE EKLENDİ
+            Integer result = routeRepo.updateRoute(routeID, departureAirportID, arrivalAirportID, estimatedDurationMinutes, distanceKm);
             if (result == 0) {
                 redirectAttributes.addFlashAttribute("success", "Route updated successfully!");
             } else {
@@ -99,8 +100,16 @@ public class StaffRouteController {
                 }
                 redirectAttributes.addFlashAttribute("error", errorMessage);
             }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null && specificDbMessage.contains("Cannot update route's departure or arrival airports. There are active flights currently assigned to this route.")) {
+                redirectAttributes.addFlashAttribute("error", "Cannot update route: Active flights are assigned to this route. Modify flights first!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "A database error occurred during update. Please try again or contact support.");
+            }
+            e.printStackTrace();
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "An error occurred: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
         }
         return "redirect:/staff/routes";
     }

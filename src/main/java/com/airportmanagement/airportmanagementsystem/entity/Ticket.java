@@ -28,6 +28,7 @@ public class Ticket {
     private String seatNumber;
     private BigDecimal price;
     private LocalDateTime purchaseDate;
+    private String status;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Luggage> luggageItems;

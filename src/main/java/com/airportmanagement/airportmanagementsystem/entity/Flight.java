@@ -26,4 +26,6 @@ public class Flight {
     private LocalDateTime departureTime;
     private LocalDateTime arrivalTime;
     private String status;
+
+    private Integer bookedSeats;
 }

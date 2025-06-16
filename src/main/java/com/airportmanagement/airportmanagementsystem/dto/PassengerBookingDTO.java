@@ -29,6 +29,7 @@ public class PassengerBookingDTO {
 
 
     private boolean isCheckedIn;
+    private String status;
 
     public LocalDateTime getPurchaseLocalDateTime() {
         return (purchaseDate != null) ? purchaseDate.toLocalDateTime() : null;

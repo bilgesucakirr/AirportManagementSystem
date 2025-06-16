@@ -5,7 +5,6 @@ import com.airportmanagement.airportmanagementsystem.entity.Aircraft;
 import com.airportmanagement.airportmanagementsystem.entity.Route;
 import com.airportmanagement.airportmanagementsystem.entity.User;
 import com.airportmanagement.airportmanagementsystem.repository.AircraftRepository;
-import com.airportmanagement.airportmanagementsystem.repository.AirportRepository;
 import com.airportmanagement.airportmanagementsystem.repository.FlightRepository;
 import com.airportmanagement.airportmanagementsystem.repository.RouteRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
@@ -21,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataAccessException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -80,12 +80,27 @@ public class StaffFlightController {
                     case -3: errorMessage = "Departure time must be before arrival time!"; break;
                     case -4: errorMessage = "Aircraft is already scheduled for an overlapping flight!"; break;
                     case -5: errorMessage = "Not enough turnaround time for the aircraft!"; break;
-                    default: errorMessage = "Failed to add flight."; break;
+                    default: errorMessage = "Failed to add flight. Error code: " + result; break;
                 }
                 redirectAttributes.addFlashAttribute("error", errorMessage);
             }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null) {
+                if (specificDbMessage.contains("Aircraft is already scheduled for an overlapping flight")) {
+                    redirectAttributes.addFlashAttribute("error", "Flight addition failed: Aircraft is already scheduled for an overlapping flight.");
+                } else if (specificDbMessage.contains("Not enough turnaround time for the aircraft")) {
+                    redirectAttributes.addFlashAttribute("error", "Flight addition failed: Not enough turnaround time for the aircraft.");
+                } else {
+                    redirectAttributes.addFlashAttribute("error", "A database error occurred during addition. Please try again or contact support.");
+                }
+            } else {
+                redirectAttributes.addFlashAttribute("error", "An unknown database error occurred during flight addition.");
+            }
+            e.printStackTrace();
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "An error occurred: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/staff/flights";
     }
@@ -111,12 +126,32 @@ public class StaffFlightController {
                     case -4: errorMessage = "Departure time must be before arrival time!"; break;
                     case -6: errorMessage = "Aircraft is already scheduled for an overlapping flight!"; break;
                     case -7: errorMessage = "Not enough turnaround time for the aircraft!"; break;
-                    default: errorMessage = "Failed to update flight."; break;
+                    default: errorMessage = "Failed to update flight. Error code: " + result; break;
                 }
                 redirectAttributes.addFlashAttribute("error", errorMessage);
             }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+
+            if (specificDbMessage != null) {
+                if (specificDbMessage.contains("Cannot update flight details. The flight has already departed or arrived, or its departure time is being set to a past date/time.")) {
+                    redirectAttributes.addFlashAttribute("error", "Cannot update flight: Departure time cannot be set to a past date/time, or the flight has already departed/arrived.");
+                }
+                else if (specificDbMessage.contains("Aircraft is already scheduled for an overlapping flight")) {
+                    redirectAttributes.addFlashAttribute("error", "Flight update failed: Aircraft is already scheduled for an overlapping flight.");
+                } else if (specificDbMessage.contains("Not enough turnaround time for the aircraft")) {
+                    redirectAttributes.addFlashAttribute("error", "Flight update failed: Not enough turnaround time for the aircraft.");
+                }
+                else {
+                    redirectAttributes.addFlashAttribute("error", "A database error occurred during update. Please try again or contact support.");
+                }
+            } else {
+                redirectAttributes.addFlashAttribute("error", "An unknown database error occurred during flight update.");
+            }
+            e.printStackTrace();
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "An error occurred: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/staff/flights";
     }
@@ -133,12 +168,27 @@ public class StaffFlightController {
                 switch (result) {
                     case -1: errorMessage = "Flight not found!"; break;
                     case -4: errorMessage = "Cannot delete flight: tickets are associated with it!"; break;
-                    default: errorMessage = "Failed to delete flight."; break;
+                    default: errorMessage = "Failed to delete flight. Error code: " + result; break;
                 }
                 redirectAttributes.addFlashAttribute("error", errorMessage);
             }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null) {
+
+                if (specificDbMessage.contains("foreign key constraint") && specificDbMessage.contains("Tickets")) {
+                    redirectAttributes.addFlashAttribute("error", "Cannot delete flight: It has associated tickets. Please cancel/remove tickets first.");
+                } else {
+
+                    redirectAttributes.addFlashAttribute("error", "A database error occurred during deletion. Please try again or contact support.");
+                }
+            } else {
+                redirectAttributes.addFlashAttribute("error", "An unknown database error occurred during flight deletion.");
+            }
+            e.printStackTrace();
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "An error occurred: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/staff/flights";
     }

@@ -25,4 +25,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
 
     @Query(value = "EXEC sp_GetPassengerBookings @UserID = :userID", nativeQuery = true)
     List<PassengerBookingDTO> getPassengerBookings(@Param("userID") Integer userID);
+
+    @Procedure(procedureName = "sp_CancelTicket")
+    Integer cancelTicket(@Param("TicketID") Integer ticketID);
 }

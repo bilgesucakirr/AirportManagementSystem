@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataAccessException; // DataAccessException'ı yakalamak için import
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -120,30 +121,43 @@ public class PassengerController {
         }
         User loggedUser = (User) session.getAttribute("loggedUser");
 
-        Integer resultCode = userRepo.updatePassengerProfile(
-                loggedUser.getUserID(),
-                fullName,
-                email,
-                passwordHash,
-                phoneNumber,
-                nationality,
-                passportNumber
-        );
+        try { // Hata yönetimi için try-catch bloğu eklendi
+            Integer resultCode = userRepo.updatePassengerProfile(
+                    loggedUser.getUserID(),
+                    fullName,
+                    email,
+                    passwordHash,
+                    phoneNumber,
+                    nationality,
+                    passportNumber
+            );
 
-        if (resultCode == 0) {
-            User updatedUser = userRepo.findById(loggedUser.getUserID()).orElse(null);
-            if (updatedUser != null) {
-                session.setAttribute("loggedUser", updatedUser);
+            if (resultCode == 0) {
+                User updatedUser = userRepo.findById(loggedUser.getUserID()).orElse(null);
+                if (updatedUser != null) {
+                    session.setAttribute("loggedUser", updatedUser);
+                }
+                redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
+            } else {
+                String errorMessage;
+                switch (resultCode) {
+                    case -1: errorMessage = "User not found."; break;
+                    case -2: errorMessage = "Email already in use by another account."; break;
+                    default: errorMessage = "Failed to update profile. Error code: " + resultCode; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
             }
-            redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
-        } else {
-            String errorMessage;
-            switch (resultCode) {
-                case -1: errorMessage = "User not found."; break;
-                case -2: errorMessage = "Email already in use by another account."; break;
-                default: errorMessage = "Failed to update profile. Error code: " + resultCode; break;
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null && specificDbMessage.contains("duplicate key value")) {
+                redirectAttributes.addFlashAttribute("error", "The provided email is already in use by another account.");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "A database error occurred during profile update. Please try again or contact support.");
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/passenger/profile";
     }
@@ -271,25 +285,43 @@ public class PassengerController {
             return "redirect:/login";
         }
 
-        Integer newTicketId = ticketRepo.bookTicket(passengerID, flightID, seatNumber, basePrice, luggageWeight, isExtraLuggage);
+        try { // Hata yönetimi için try-catch bloğu eklendi
+            Integer newTicketId = ticketRepo.bookTicket(passengerID, flightID, seatNumber, basePrice, luggageWeight, isExtraLuggage);
 
-        if (newTicketId != null && newTicketId > 0) {
-            redirectAttributes.addFlashAttribute("success", "Ticket booked successfully! Your Ticket ID: " + newTicketId);
-            return "redirect:/passenger/my-bookings";
-        } else {
-            String errorMessage;
-            switch (newTicketId) {
-                case -1: errorMessage = "Passenger not found."; break;
-                case -2: errorMessage = "Flight not found."; break;
-                case -3: errorMessage = "Flight is not active (e.g., Cancelled, Arrived)."; break;
-                case -4: errorMessage = "Invalid seat number for this flight."; break;
-                case -5: errorMessage = "Seat is already taken. Please select another seat."; break;
-                case -6: errorMessage = "Flight is full. Please select another flight."; break;
-                case -7: errorMessage = "Cannot book this flight: it has already departed."; break;
-                case -8: errorMessage = "Failed to add initial luggage. Please try again."; break;
-                default: errorMessage = "Failed to book ticket. Please try again. Error Code: " + newTicketId; break;
+            if (newTicketId != null && newTicketId > 0) {
+                redirectAttributes.addFlashAttribute("success", "Ticket booked successfully! Your Ticket ID: " + newTicketId);
+                return "redirect:/passenger/my-bookings";
+            } else {
+                String errorMessage;
+                switch (newTicketId) {
+                    case -1: errorMessage = "Passenger not found."; break;
+                    case -2: errorMessage = "Flight not found."; break;
+                    case -3: errorMessage = "Flight is not active (e.g., Cancelled, Arrived)."; break;
+                    case -4: errorMessage = "Invalid seat number for this flight."; break;
+                    case -5: errorMessage = "Seat is already taken. Please select another seat."; break;
+                    case -6: errorMessage = "Flight is full. Please select another flight."; break;
+                    case -7: errorMessage = "Cannot book this flight: it has already departed."; break;
+                    case -8: errorMessage = "Failed to add initial luggage. Please try again."; break;
+                    default: errorMessage = "Failed to book ticket. Please try again. Error Code: " + newTicketId; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
+                return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            // sp_BookTicket'ten gelebilecek spesifik mesajları burada da kontrol edebiliriz
+            if (specificDbMessage != null && specificDbMessage.contains("Seat is already taken")) {
+                redirectAttributes.addFlashAttribute("error", "Booking failed: The selected seat is already taken. Please choose another seat.");
+            } else if (specificDbMessage != null && specificDbMessage.contains("Flight is full")) {
+                redirectAttributes.addFlashAttribute("error", "Booking failed: The flight is full. Please select another flight.");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "A database error occurred during booking. Please try again or contact support.");
+            }
+            e.printStackTrace();
+            return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during booking: " + e.getMessage());
+            e.printStackTrace();
             return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
         }
     }
@@ -302,11 +334,6 @@ public class PassengerController {
         }
         User loggedUser = (User) session.getAttribute("loggedUser");
         List<PassengerBookingDTO> myBookings = ticketRepo.getPassengerBookings(loggedUser.getUserID());
-
-        myBookings.forEach(booking -> {
-            boolean isCheckedIn = checkInRepo.existsByTicket_TicketID(booking.getTicketID());
-            booking.setCheckedIn(isCheckedIn);
-        });
 
         model.addAttribute("bookings", myBookings);
         return "passenger-my-bookings";
@@ -328,40 +355,90 @@ public class PassengerController {
                 .filter(b -> b.getTicketID().equals(ticketID))
                 .findFirst();
 
-        if (bookingDetailsOptional.isPresent()) {
-            PassengerBookingDTO booking = bookingDetailsOptional.get();
-            boolean isCheckedIn = checkInRepo.existsByTicket_TicketID(booking.getTicketID());
-            booking.setCheckedIn(isCheckedIn);
-
-            List<LuggageDetailsDTO> luggageItems = luggageRepo.getLuggageByTicketID(ticketID);
-            model.addAttribute("luggageItems", luggageItems);
-            model.addAttribute("ticketIDForLuggage", ticketID);
-
-            LocalDateTime departureTime = booking.getDepartureLocalDateTime();
-            LocalDateTime currentTime = LocalDateTime.now();
-
-            Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
-            int maxCheckInHoursBefore = appSettings.map(ApplicationSetting::getMaximumCheckInHoursBeforeDeparture).orElse(24);
-            int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
-
-            boolean isCheckInAvailableNow = false;
-            if (!booking.isCheckedIn()) {
-                LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
-                LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
-                isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime));
-            }
-
-            model.addAttribute("booking", booking);
-            model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
-
-            model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
-            model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
-
-        } else {
+        if (bookingDetailsOptional.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Booking details not found or you are not authorized to view it.");
             return "redirect:/passenger/my-bookings";
         }
+
+        PassengerBookingDTO booking = bookingDetailsOptional.get();
+
+        List<LuggageDetailsDTO> luggageItems = luggageRepo.getLuggageByTicketID(ticketID);
+        model.addAttribute("luggageItems", luggageItems);
+        model.addAttribute("ticketIDForLuggage", ticketID);
+
+        LocalDateTime departureTime = booking.getDepartureLocalDateTime();
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
+        int maxCheckInHoursBefore = appSettings.map(ApplicationSetting::getMaximumCheckInHoursBeforeDeparture).orElse(24);
+        int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
+
+        boolean isCheckInAvailableNow = false;
+
+        if (booking.getStatus().equals("Active") && !booking.isCheckedIn()) {
+            LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
+            LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
+            isCheckInAvailableNow = (currentTime.isAfter(checkInOpenTime) && currentTime.isBefore(checkInCloseTime));
+        }
+
+        model.addAttribute("booking", booking);
+        model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
+
+        model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
+        model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
+
+        boolean canCancelTicket = booking.getStatus().equals("Active")
+                && booking.getDepartureLocalDateTime().isAfter(LocalDateTime.now().plusHours(12))
+                && !booking.isCheckedIn();
+        model.addAttribute("canCancelTicket", canCancelTicket);
+
+
         return "passenger-booking-details";
+    }
+
+    // YENİ METOT: Bilet İptal Etme
+    @PostMapping("/cancel-ticket")
+    public String cancelTicket(HttpSession session,
+                               @RequestParam Integer ticketID,
+                               RedirectAttributes redirectAttributes) {
+        if (!checkPassengerRole(session)) {
+            return "redirect:/login?error=unauthorized";
+        }
+
+        User loggedUser = (User) session.getAttribute("loggedUser");
+        // Kullanıcının gerçekten bu bilete sahip olup olmadığını doğrula
+        boolean ticketBelongsToUser = ticketRepo.findById(ticketID)
+                .map(t -> t.getPassenger().getUser().getUserID().equals(loggedUser.getUserID()))
+                .orElse(false);
+
+        if (!ticketBelongsToUser) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized operation. Ticket not found or does not belong to you.");
+            return "redirect:/passenger/my-bookings";
+        }
+
+        try {
+            Integer resultCode = ticketRepo.cancelTicket(ticketID);
+
+            if (resultCode == 0) {
+                redirectAttributes.addFlashAttribute("success", "Ticket " + ticketID + " has been successfully cancelled!");
+            } else {
+                String errorMessage;
+                switch (resultCode) {
+                    case -1: errorMessage = "Ticket not found."; break;
+                    case -2: errorMessage = "Ticket is already cancelled."; break;
+                    default: errorMessage = "Failed to cancel ticket. Error Code: " + resultCode; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
+            }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            redirectAttributes.addFlashAttribute("error", "A database error occurred during ticket cancellation. Please try again or contact support.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during ticket cancellation: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return "redirect:/passenger/my-bookings";
     }
 
     @PostMapping("/check-in")
@@ -382,22 +459,32 @@ public class PassengerController {
             return "redirect:/passenger/my-bookings";
         }
 
-        Integer resultCode = checkInRepo.performCheckIn(ticketID);
+        try {
+            Integer resultCode = checkInRepo.performCheckIn(ticketID);
 
-        if (resultCode == 0) {
-            redirectAttributes.addFlashAttribute("success", "Check-in successful for Ticket ID: " + ticketID + "!");
-        } else {
-            String errorMessage;
-            switch (resultCode) {
-                case -1: errorMessage = "Check-in failed: Ticket not found."; break;
-                case -2: errorMessage = "Check-in failed: You have already checked in for this ticket."; break;
-                case -3: errorMessage = "Check-in failed: Flight is not active (e.g., cancelled, departed, arrived)."; break;
-                case -4: errorMessage = "Check-in failed: Flight has already departed."; break;
-                case -5: errorMessage = "Check-in failed: Check-in is not yet open for this flight."; break;
-                case -6: errorMessage = "Check-in failed: Check-in window has closed for this flight."; break;
-                default: errorMessage = "Check-in failed. Please try again. Error Code: " + resultCode; break;
+            if (resultCode == 0) {
+                redirectAttributes.addFlashAttribute("success", "Check-in successful for Ticket ID: " + ticketID + "!");
+            } else {
+                String errorMessage;
+                switch (resultCode) {
+                    case -1: errorMessage = "Check-in failed: Ticket not found."; break;
+                    case -2: errorMessage = "Check-in failed: You have already checked in for this ticket."; break;
+                    case -3: errorMessage = "Check-in failed: Flight is not active (e.g., cancelled, departed, arrived)."; break;
+                    case -4: errorMessage = "Check-in failed: Flight has already departed."; break;
+                    case -5: errorMessage = "Check-in failed: Check-in is not yet open for this flight."; break;
+                    case -6: errorMessage = "Check-in failed: Check-in window has closed for this flight."; break;
+                    case -8: errorMessage = "Check-in failed: This ticket has been cancelled."; break;
+                    default: errorMessage = "Check-in failed. Please try again. Error Code: " + resultCode; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            redirectAttributes.addFlashAttribute("error", "A database error occurred during check-in. Please try again or contact support.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during check-in: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/passenger/my-bookings";
     }
@@ -422,18 +509,27 @@ public class PassengerController {
             return "redirect:/passenger/my-bookings";
         }
 
-        Integer newLuggageID = luggageRepo.addLuggage(ticketID, weight, isExtra);
+        try { // Hata yönetimi için try-catch bloğu eklendi
+            Integer newLuggageID = luggageRepo.addLuggage(ticketID, weight, isExtra);
 
-        if (newLuggageID != null && newLuggageID > 0) {
-            redirectAttributes.addFlashAttribute("success", "Luggage added successfully! ID: " + newLuggageID);
-        } else {
-            String errorMessage;
-            switch (newLuggageID) {
-                case -1: errorMessage = "Failed to add luggage: Ticket not found."; break;
-                case -2: errorMessage = "Failed to add luggage: Weight must be positive."; break;
-                default: errorMessage = "Failed to add luggage. Please try again. Error Code: " + newLuggageID; break;
+            if (newLuggageID != null && newLuggageID > 0) {
+                redirectAttributes.addFlashAttribute("success", "Luggage added successfully! ID: " + newLuggageID);
+            } else {
+                String errorMessage;
+                switch (newLuggageID) {
+                    case -1: errorMessage = "Failed to add luggage: Ticket not found."; break;
+                    case -2: errorMessage = "Failed to add luggage: Weight must be positive."; break;
+                    default: errorMessage = "Failed to add luggage. Please try again. Error Code: " + newLuggageID; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            redirectAttributes.addFlashAttribute("error", "A database error occurred during luggage addition. Please try again or contact support.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during luggage addition: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/passenger/booking-details?ticketID=" + ticketID;
     }
@@ -459,18 +555,27 @@ public class PassengerController {
         }
         Integer ticketIdForRedirect = ticketIdForRedirectOpt.get();
 
-        Integer resultCode = luggageRepo.updateLuggage(luggageID, weight, isExtra);
+        try { // Hata yönetimi için try-catch bloğu eklendi
+            Integer resultCode = luggageRepo.updateLuggage(luggageID, weight, isExtra);
 
-        if (resultCode == 0) {
-            redirectAttributes.addFlashAttribute("success", "Luggage updated successfully!");
-        } else {
-            String errorMessage;
-            switch (resultCode) {
-                case -1: errorMessage = "Failed to update luggage: Luggage item not found."; break;
-                case -2: errorMessage = "Failed to update luggage: Weight must be positive."; break;
-                default: errorMessage = "Failed to update luggage. Please try again. Error Code: " + resultCode; break;
+            if (resultCode == 0) {
+                redirectAttributes.addFlashAttribute("success", "Luggage updated successfully!");
+            } else {
+                String errorMessage;
+                switch (resultCode) {
+                    case -1: errorMessage = "Failed to update luggage: Luggage item not found."; break;
+                    case -2: errorMessage = "Failed to update luggage: Weight must be positive."; break;
+                    default: errorMessage = "Failed to update luggage. Please try again. Error Code: " + resultCode; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            redirectAttributes.addFlashAttribute("error", "A database error occurred during luggage update. Please try again or contact support.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during luggage update: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/passenger/booking-details?ticketID=" + ticketIdForRedirect;
     }
@@ -494,17 +599,26 @@ public class PassengerController {
         }
         Integer ticketIdForRedirect = ticketIdForRedirectOpt.get();
 
-        Integer resultCode = luggageRepo.deleteLuggage(luggageID);
+        try {
+            Integer resultCode = luggageRepo.deleteLuggage(luggageID);
 
-        if (resultCode == 0) {
-            redirectAttributes.addFlashAttribute("success", "Luggage deleted successfully!");
-        } else {
-            String errorMessage;
-            switch (resultCode) {
-                case -1: errorMessage = "Failed to delete luggage: Luggage item not found."; break;
-                default: errorMessage = "Failed to delete luggage. Please try again. Error Code: " + resultCode; break;
+            if (resultCode == 0) {
+                redirectAttributes.addFlashAttribute("success", "Luggage deleted successfully!");
+            } else {
+                String errorMessage;
+                switch (resultCode) {
+                    case -1: errorMessage = "Failed to delete luggage: Luggage item not found."; break;
+                    default: errorMessage = "Failed to delete luggage. Please try again. Error Code: " + resultCode; break;
+                }
+                redirectAttributes.addFlashAttribute("error", errorMessage);
             }
-            redirectAttributes.addFlashAttribute("error", errorMessage);
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            redirectAttributes.addFlashAttribute("error", "A database error occurred during luggage deletion. Please try again or contact support.");
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred during luggage deletion: " + e.getMessage());
+            e.printStackTrace();
         }
         return "redirect:/passenger/booking-details?ticketID=" + ticketIdForRedirect;
     }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataAccessException;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -117,31 +118,52 @@ public class AdminUserController {
     public String removeUserRole(@RequestParam Integer userID,
                                  @RequestParam String roleName,
                                  RedirectAttributes redirectAttributes) {
-
-        Integer result = userRepo.removeUserRole(userID, roleName);
-
-        if (result == -1) {
-            redirectAttributes.addFlashAttribute("error", "Role not found!");
-        } else if (result == 0) {
-            redirectAttributes.addFlashAttribute("success", roleName + " role removed successfully!");
-        } else {
-            redirectAttributes.addFlashAttribute("error", "Failed to remove " + roleName + " role.");
+        try {
+            Integer result = userRepo.removeUserRole(userID, roleName);
+            if (result == -1) {
+                redirectAttributes.addFlashAttribute("error", "Role not found!");
+            } else if (result == 0) {
+                redirectAttributes.addFlashAttribute("success", roleName + " role removed successfully!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Failed to remove " + roleName + " role.");
+            }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null && specificDbMessage.contains("You cannot remove the ADMIN role from yourself.")) {
+                redirectAttributes.addFlashAttribute("error", "Security Alert: You cannot remove the ADMIN role from yourself!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "A database error occurred during role removal. Please try again or contact support.");
+            }
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
         }
         return "redirect:/admin/users";
     }
 
+
     @PostMapping("/users/delete")
     public String deleteUserCompletely(@RequestParam Integer userID,
                                        RedirectAttributes redirectAttributes) {
-
-        Integer result = userRepo.deleteUserCompletely(userID);
-
-        if (result == -1) {
-            redirectAttributes.addFlashAttribute("error", "User not found!");
-        } else if (result == 0) {
-            redirectAttributes.addFlashAttribute("success", "User deleted completely!");
-        } else {
-            redirectAttributes.addFlashAttribute("error", "Failed to delete user.");
+        try {
+            Integer result = userRepo.deleteUserCompletely(userID);
+            if (result == -1) {
+                redirectAttributes.addFlashAttribute("error", "User not found!");
+            } else if (result == 0) {
+                redirectAttributes.addFlashAttribute("success", "User deleted completely!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Failed to delete user.");
+            }
+        } catch (DataAccessException e) {
+            String specificDbMessage = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
+            if (specificDbMessage != null && specificDbMessage.contains("You cannot delete your own user account.")) {
+                redirectAttributes.addFlashAttribute("error", "Security Alert: You cannot delete your own user account!");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Failed to delete user due to existing related records. Please remove dependencies first.");
+            }
+            e.printStackTrace();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred: " + e.getMessage());
         }
         return "redirect:/admin/users";
     }
