@@ -265,6 +265,11 @@
           <a class="nav-link" href="/passenger/flights/search"><i class="fas fa-plane-departure"></i> Search & Book Flights</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="/passenger/notifications"><i class="fas fa-bell"></i> Notifications
+            <span th:if="${unreadNotificationsCount > 0}" class="badge badge-notification-count" th:text="${unreadNotificationsCount}"></span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </li>
       </ul>
