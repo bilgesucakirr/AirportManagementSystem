@@ -1,3 +1,4 @@
+// src/main/java/com/airportmanagement/airportmanagementsystem/dto/FlightDetailsDTO.java
 package com.airportmanagement.airportmanagementsystem.dto;
 
 import com.airportmanagement.airportmanagementsystem.entity.Aircraft;
@@ -7,12 +8,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
+import java.sql.Timestamp; // Timestamp'ı DTO ile eşleşmesi için kullanıyoruz
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor // Bu, tüm parametreleri içeren bir constructor oluşturur
 public class FlightDetailsDTO {
     private Integer flightID;
     private Integer routeID;
@@ -30,6 +31,12 @@ public class FlightDetailsDTO {
     private Timestamp departureTime;
     private Timestamp arrivalTime;
     private String status;
+    private Integer bookedSeats;
+
+    private Integer assignedGateID;
+    private String assignedGateCode;
+    private Timestamp gateStartTime;
+    private Timestamp gateEndTime;
 
 
     public LocalDateTime getDepartureLocalDateTime() {
@@ -38,5 +45,13 @@ public class FlightDetailsDTO {
 
     public LocalDateTime getArrivalLocalDateTime() {
         return (arrivalTime != null) ? arrivalTime.toLocalDateTime() : null;
+    }
+
+    public LocalDateTime getGateStartLocalDateTime() {
+        return (gateStartTime != null) ? gateStartTime.toLocalDateTime() : null;
+    }
+
+    public LocalDateTime getGateEndLocalDateTime() {
+        return (gateEndTime != null) ? gateEndTime.toLocalDateTime() : null;
     }
 }

@@ -24,5 +24,7 @@ public interface ApplicationSettingRepository extends JpaRepository<ApplicationS
                                       @Param("MaximumCheckInHoursBeforeDeparture") Integer maximumCheckInHoursBeforeDeparture,
                                       @Param("MinimumCheckInMinutesBeforeDeparture") Integer minimumCheckInMinutesBeforeDeparture,
                                       @Param("StandardLuggageWeightKg") Integer standardLuggageWeightKg,
-                                      @Param("ExtraLuggageFeePerKg") BigDecimal extraLuggageFeePerKg);
+                                      @Param("ExtraLuggageFeePerKg") BigDecimal extraLuggageFeePerKg,
+                                      @Param("GateBufferBeforeDepartureMinutes") Integer gateBufferBeforeDepartureMinutes, // Yeni
+                                      @Param("GateBufferAfterArrivalMinutes") Integer gateBufferAfterArrivalMinutes);    // Yeni
 }

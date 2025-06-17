@@ -54,6 +54,8 @@ public class AdminSystemSettingsController {
                                        @RequestParam Integer minimumCheckInMinutesBeforeDeparture,
                                        @RequestParam Integer standardLuggageWeightKg,
                                        @RequestParam BigDecimal extraLuggageFeePerKg,
+                                       @RequestParam Integer gateBufferBeforeDepartureMinutes, // YENİ PARAMETRE
+                                       @RequestParam Integer gateBufferAfterArrivalMinutes,    // YENİ PARAMETRE
                                        RedirectAttributes redirectAttributes) {
         Integer resultCode = 0;
         try {
@@ -67,7 +69,9 @@ public class AdminSystemSettingsController {
                     maximumCheckInHoursBeforeDeparture,
                     minimumCheckInMinutesBeforeDeparture,
                     standardLuggageWeightKg,
-                    extraLuggageFeePerKg
+                    extraLuggageFeePerKg,
+                    gateBufferBeforeDepartureMinutes, // YENİ PARAMETREYİ GÖNDER
+                    gateBufferAfterArrivalMinutes     // YENİ PARAMETREYİ GÖNDER
             );
             if (resultCode == 0) {
                 redirectAttributes.addFlashAttribute("success", "System settings updated successfully!");

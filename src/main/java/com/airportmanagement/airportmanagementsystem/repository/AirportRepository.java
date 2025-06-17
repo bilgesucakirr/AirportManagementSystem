@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface AirportRepository extends JpaRepository<Airport, Integer> {
 
+    Optional<Airport> findByCode(String code);
+
     @Procedure(procedureName = "sp_AddAirport")
     Integer addAirport(@Param("AirportName") String airportName,
                        @Param("Location") String location,

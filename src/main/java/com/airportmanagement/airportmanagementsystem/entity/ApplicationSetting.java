@@ -27,4 +27,7 @@ public class ApplicationSetting {
 
     private Integer standardLuggageWeightKg;
     private BigDecimal extraLuggageFeePerKg;
+
+    private Integer gateBufferBeforeDepartureMinutes;
+    private Integer gateBufferAfterArrivalMinutes;
 }

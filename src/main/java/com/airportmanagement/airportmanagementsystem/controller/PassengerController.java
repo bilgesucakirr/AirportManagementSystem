@@ -8,7 +8,7 @@ import com.airportmanagement.airportmanagementsystem.dto.LuggageDetailsDTO;
 import com.airportmanagement.airportmanagementsystem.entity.Airport;
 import com.airportmanagement.airportmanagementsystem.entity.ApplicationSetting;
 import com.airportmanagement.airportmanagementsystem.entity.User;
-import com.airportmanagement.airportmanagementsystem.entity.Notification; // Yeni import
+import com.airportmanagement.airportmanagementsystem.entity.Notification;
 import com.airportmanagement.airportmanagementsystem.repository.AirportRepository;
 import com.airportmanagement.airportmanagementsystem.repository.FlightRepository;
 import com.airportmanagement.airportmanagementsystem.repository.LuggageRepository;
@@ -19,7 +19,7 @@ import com.airportmanagement.airportmanagementsystem.repository.UserRepository;
 import com.airportmanagement.airportmanagementsystem.repository.UserRoleRepository;
 import com.airportmanagement.airportmanagementsystem.repository.CheckInRepository;
 import com.airportmanagement.airportmanagementsystem.repository.ApplicationSettingRepository;
-import com.airportmanagement.airportmanagementsystem.repository.NotificationRepository; // Yeni import
+import com.airportmanagement.airportmanagementsystem.repository.NotificationRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataAccessException; // DataAccessException'ı yakalamak için import
+import org.springframework.dao.DataAccessException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -76,7 +76,7 @@ public class PassengerController {
     private LuggageRepository luggageRepo;
 
     @Autowired
-    private NotificationRepository notificationRepo; // YENİ: NotificationRepository eklendi
+    private NotificationRepository notificationRepo;
 
     private boolean checkPassengerRole(HttpSession session) {
         User loggedUser = (User) session.getAttribute("loggedUser");
@@ -92,7 +92,6 @@ public class PassengerController {
         User loggedUser = (User) session.getAttribute("loggedUser");
         model.addAttribute("fullName", loggedUser.getFullName());
 
-        // Okunmamış bildirim sayısını al ve modele ekle
         long unreadNotificationsCount = notificationRepo.countByUser_UserIDAndIsReadFalse(loggedUser.getUserID());
         model.addAttribute("unreadNotificationsCount", unreadNotificationsCount);
 
@@ -143,7 +142,7 @@ public class PassengerController {
             );
 
             if (resultCode == 0) {
-                // Profil güncellendiyse session'daki loggedUser'ı da güncelle
+
                 User updatedUser = userRepo.findById(loggedUser.getUserID()).orElse(null);
                 if (updatedUser != null) {
                     session.setAttribute("loggedUser", updatedUser);
@@ -181,7 +180,7 @@ public class PassengerController {
         }
         List<Airport> airports = airportRepo.findAll();
         model.addAttribute("airports", airports);
-        model.addAttribute("flights", List.of()); // Başlangıçta boş bir liste gönder
+        model.addAttribute("flights", List.of());
         return "passenger-search-flights";
     }
 
@@ -197,10 +196,8 @@ public class PassengerController {
             return "redirect:/login?error=unauthorized";
         }
 
-        // Geçmiş tarih seçme engeli
         if (departureDate != null && departureDate.isBefore(LocalDate.now())) {
             model.addAttribute("error", "Departure date cannot be in the past.");
-            // UI'daki form alanlarını tekrar doldurmak için gerekli attribute'ları ekle
             model.addAttribute("airports", airportRepo.findAll());
             model.addAttribute("departureAirportCode", departureAirportCode);
             model.addAttribute("arrivalAirportCode", arrivalAirportCode);
@@ -209,7 +206,6 @@ public class PassengerController {
             return "passenger-search-flights";
         }
 
-        // LocalDateTime'a çevirme (SP'ye uygun format)
         LocalDateTime departureDateTime = departureDate != null ? departureDate.atStartOfDay() : null;
 
         List<FlightSearchDTO> flights = flightRepo.searchAvailableFlights(
@@ -219,10 +215,9 @@ public class PassengerController {
                 minAvailableSeats
         );
         model.addAttribute("flights", flights);
-        List<Airport> airports = airportRepo.findAll(); // Airport listesini tekrar gönder
+        List<Airport> airports = airportRepo.findAll();
         model.addAttribute("airports", airports);
 
-        // Arama formunu kullanıcının girdiği değerlerle tekrar doldur
         model.addAttribute("departureAirportCode", departureAirportCode);
         model.addAttribute("arrivalAirportCode", arrivalAirportCode);
         model.addAttribute("departureDate", departureDate);
@@ -254,24 +249,21 @@ public class PassengerController {
 
         FlightSearchDTO flight = flightDetailsOptional.get();
 
-        // Uçuşun kalkıp kalkmadığını kontrol et
         if (flight.getDepartureLocalDateTime().isBefore(LocalDateTime.now())) {
             redirectAttributes.addFlashAttribute("error", "This flight has already departed and cannot be booked.");
             return "redirect:/passenger/flights/search";
         }
 
-        // Koltuk detaylarını al
         List<SeatAvailabilityDTO> seats = seatRepo.getFlightAvailableSeats(flightID);
 
-        // Koltukları düzgün sırala (satır numarası ve sütun harfi)
         List<SeatAvailabilityDTO> sortedSeats = seats.stream()
                 .sorted(Comparator.comparing((SeatAvailabilityDTO s) -> {
                     try {
-                        return Integer.parseInt(s.getSeatNumber().replaceAll("[^0-9]", "")); // Numarayı ayırıp int'e çevir
+                        return Integer.parseInt(s.getSeatNumber().replaceAll("[^0-9]", ""));
                     } catch (NumberFormatException e) {
-                        return 0; // Sayı olmayan durumlar için varsayılan
+                        return 0;
                     }
-                }).thenComparing(SeatAvailabilityDTO::getSeatNumber)) // Sonra harfe göre sırala (örn: 1A, 1B, 1C)
+                }).thenComparing(SeatAvailabilityDTO::getSeatNumber))
                 .collect(Collectors.toList());
 
         model.addAttribute("flight", flight);
@@ -279,7 +271,6 @@ public class PassengerController {
         User loggedUser = (User) session.getAttribute("loggedUser");
         passengerRepo.findByUser(loggedUser).ifPresent(p -> model.addAttribute("passengerID", p.getPassengerID()));
 
-        // Uygulama ayarlarını getir (bagaj ücretleri için)
         Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
         model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
         model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
@@ -300,7 +291,6 @@ public class PassengerController {
             return "redirect:/login?error=unauthorized";
         }
 
-        // PassengerID kontrolü (session'dan gelmeli ama null olmaması önemli)
         if (passengerID == null) {
             redirectAttributes.addFlashAttribute("error", "Passenger information is missing. Please log in again.");
             return "redirect:/login";
@@ -311,7 +301,7 @@ public class PassengerController {
 
             if (newTicketId != null && newTicketId > 0) {
                 redirectAttributes.addFlashAttribute("success", "Ticket booked successfully! Your Ticket ID: " + newTicketId);
-                return "redirect:/passenger/my-bookings"; // Başarılı olursa kendi rezervasyonlarıma git
+                return "redirect:/passenger/my-bookings";
             } else {
                 String errorMessage;
                 switch (newTicketId) {
@@ -326,7 +316,7 @@ public class PassengerController {
                     default: errorMessage = "Failed to book ticket. Please try again. Error Code: " + newTicketId; break;
                 }
                 redirectAttributes.addFlashAttribute("error", errorMessage);
-                // Hata durumunda koltuk seçimi sayfasına geri dön ve uçuş ID'sini koru
+
                 return "redirect:/passenger/flights/select-seat?flightID=" + flightID;
             }
         } catch (DataAccessException e) {
@@ -356,9 +346,6 @@ public class PassengerController {
         User loggedUser = (User) session.getAttribute("loggedUser");
         List<PassengerBookingDTO> myBookings = ticketRepo.getPassengerBookings(loggedUser.getUserID());
 
-        // PassengerBookingDTO'daki isCheckedIn alanı ve Status alanı zaten SP tarafından dolduruluyor.
-        // Bu nedenle burada manuel olarak set etmeye gerek yok.
-
         model.addAttribute("bookings", myBookings);
         return "passenger-my-bookings";
     }
@@ -374,7 +361,6 @@ public class PassengerController {
         }
         User loggedUser = (User) session.getAttribute("loggedUser");
 
-        // Kullanıcının sadece kendi rezervasyonlarını görüntüleyebildiğinden emin ol
         Optional<PassengerBookingDTO> bookingDetailsOptional = ticketRepo.getPassengerBookings(loggedUser.getUserID())
                 .stream()
                 .filter(b -> b.getTicketID().equals(ticketID))
@@ -387,21 +373,18 @@ public class PassengerController {
 
         PassengerBookingDTO booking = bookingDetailsOptional.get();
 
-        // Bagaj bilgilerini getir
         List<LuggageDetailsDTO> luggageItems = luggageRepo.getLuggageByTicketID(ticketID);
         model.addAttribute("luggageItems", luggageItems);
-        model.addAttribute("ticketIDForLuggage", ticketID); // Bagaj modalı için ticketID
+        model.addAttribute("ticketIDForLuggage", ticketID);
 
         LocalDateTime departureTime = booking.getDepartureLocalDateTime();
         LocalDateTime currentTime = LocalDateTime.now();
 
-        // Check-in zaman pencerelerini uygulama ayarlarından al
         Optional<ApplicationSetting> appSettings = appSettingRepo.getApplicationSettings();
         int maxCheckInHoursBefore = appSettings.map(ApplicationSetting::getMaximumCheckInHoursBeforeDeparture).orElse(24);
         int minCheckInMinutesBefore = appSettings.map(ApplicationSetting::getMinimumCheckInMinutesBeforeDeparture).orElse(60);
 
         boolean isCheckInAvailableNow = false;
-        // Check-in sadece bilet aktifse, check-in yapılmamışsa VE zaman penceresi içindeyse açıktır
         if (booking.getStatus().equals("Active") && !booking.isCheckedIn()) {
             LocalDateTime checkInOpenTime = departureTime.minusHours(maxCheckInHoursBefore);
             LocalDateTime checkInCloseTime = departureTime.minusMinutes(minCheckInMinutesBefore);
@@ -411,22 +394,19 @@ public class PassengerController {
         model.addAttribute("booking", booking);
         model.addAttribute("isCheckInAvailableNow", isCheckInAvailableNow);
 
-        // Bagaj ücret ayarlarını modele ekle
         model.addAttribute("standardLuggageWeightKg", appSettings.map(ApplicationSetting::getStandardLuggageWeightKg).orElse(20));
         model.addAttribute("extraLuggageFeePerKg", appSettings.map(ApplicationSetting::getExtraLuggageFeePerKg).orElse(BigDecimal.valueOf(5.00)));
 
-        // Bilet iptal edilebilir mi kontrolü
-        // Bilet aktif olmalı, uçuş henüz kalkmamış olmalı (örn: 12 saat öncesine kadar iptal edilebilir kuralı) VE check-in yapılmamış olmalı
         boolean canCancelTicket = booking.getStatus().equals("Active")
-                && booking.getDepartureLocalDateTime().isAfter(LocalDateTime.now().plusHours(12)) // Uçuştan en az 12 saat önce
-                && !booking.isCheckedIn(); // Check-in yapılmışsa iptal edilemez (iş kuralı)
+                && booking.getDepartureLocalDateTime().isAfter(LocalDateTime.now().plusHours(12))
+                && !booking.isCheckedIn();
         model.addAttribute("canCancelTicket", canCancelTicket);
 
 
         return "passenger-booking-details";
     }
 
-    // Bilet İptal Etme
+
     @PostMapping("/cancel-ticket")
     public String cancelTicket(HttpSession session,
                                @RequestParam Integer ticketID,
@@ -436,7 +416,7 @@ public class PassengerController {
         }
 
         User loggedUser = (User) session.getAttribute("loggedUser");
-        // Kullanıcının gerçekten bu bilete sahip olup olmadığını doğrula (güvenlik)
+
         boolean ticketBelongsToUser = ticketRepo.findById(ticketID)
                 .map(t -> t.getPassenger().getUser().getUserID().equals(loggedUser.getUserID()))
                 .orElse(false);
@@ -461,7 +441,7 @@ public class PassengerController {
                 redirectAttributes.addFlashAttribute("error", errorMessage);
             }
         } catch (DataAccessException e) {
-            // SP'den gelebilecek veya diğer DB hatalarını yakala
+
             redirectAttributes.addFlashAttribute("error", "A database error occurred during ticket cancellation. Please try again or contact support.");
             e.printStackTrace();
         } catch (Exception e) {

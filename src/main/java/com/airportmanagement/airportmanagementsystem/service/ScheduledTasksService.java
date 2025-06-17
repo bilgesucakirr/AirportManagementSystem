@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 public class ScheduledTasksService {
 
     @Autowired
-    private JdbcTemplate jdbcTemplate; // JdbcTemplate'i enjekte et
+    private JdbcTemplate jdbcTemplate;
 
-    @Scheduled(fixedRate = 300000) // Her 5 dakikada bir (test için)
 
+    @Scheduled(cron = "0 0/5 * * * ?")
     @Transactional
     public void updateFlightStatuses() {
         System.out.println("Scheduled task: Updating expired flight statuses at " + LocalDateTime.now());
@@ -30,6 +30,26 @@ public class ScheduledTasksService {
             System.out.println("Scheduled task: Flight statuses updated successfully.");
         } catch (Exception e) {
             System.err.println("Scheduled task: Error updating flight statuses: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Scheduled(cron = "0 0/1 * * * ?")
+    @Transactional
+    public void autoAssignGates() {
+        System.out.println("Scheduled task: Attempting to auto-assign gates at " + LocalDateTime.now());
+        try {
+
+            jdbcTemplate.execute("EXEC sp_set_session_context 'is_automated_update', 1;");
+
+            jdbcTemplate.execute("EXEC sp_AutoAssignGates;");
+
+
+            jdbcTemplate.execute("EXEC sp_set_session_context 'is_automated_update', NULL;");
+
+            System.out.println("Scheduled task: Auto gate assignment completed.");
+        } catch (Exception e) {
+            System.err.println("Scheduled task: Error during auto gate assignment: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -187,7 +187,6 @@
             <div class="form-text">Minimum minutes before flight departure when online check-in is available.</div>
           </div>
 
-          <!-- NEW Luggage related settings -->
           <div class="mb-3">
             <label for="standardLuggageWeightKg" class="form-label">Standard Luggage Weight Allowance (KG)</label>
             <input type="number" class="form-control" id="standardLuggageWeightKg" name="standardLuggageWeightKg" th:value="${settings.standardLuggageWeightKg}" min="0">
@@ -198,6 +197,19 @@
             <label for="extraLuggageFeePerKg" class="form-label">Extra Luggage Fee Per KG</label>
             <input type="number" step="0.01" class="form-control" id="extraLuggageFeePerKg" name="extraLuggageFeePerKg" th:value="${settings.extraLuggageFeePerKg}" min="0">
             <div class="form-text">Fee applied per kg for excess luggage weight.</div>
+          </div>
+
+          <!-- YENİ EKLENEN SÜTUNLAR BURADA -->
+          <div class="mb-3">
+            <label for="gateBufferBeforeDepartureMinutes" class="form-label">Gate Buffer Before Departure (Minutes)</label>
+            <input type="number" class="form-control" id="gateBufferBeforeDepartureMinutes" name="gateBufferBeforeDepartureMinutes" th:value="${settings.gateBufferBeforeDepartureMinutes}" min="0">
+            <div class="form-text">Time before scheduled departure that a gate is allocated for an aircraft.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="gateBufferAfterArrivalMinutes" class="form-label">Gate Buffer After Arrival (Minutes)</label>
+            <input type="number" class="form-control" id="gateBufferAfterArrivalMinutes" name="gateBufferAfterArrivalMinutes" th:value="${settings.gateBufferAfterArrivalMinutes}" min="0">
+            <div class="form-text">Time after scheduled arrival that a gate is occupied by an aircraft.</div>
           </div>
 
           <button type="submit" class="btn btn-primary">Save Settings</button>

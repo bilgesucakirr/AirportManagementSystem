@@ -174,6 +174,9 @@
       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFlightModal">
         <i class="fas fa-plus-circle"></i> Add New Flight
       </button>
+      <button type="button" class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#viewGateAssignmentsModal">
+        <i class="fas fa-gate"></i> View All Gate Assignments
+      </button>
     </div>
 
     <h3 class="mt-4 mb-3" style="color: #003057;">All Flights</h3>
@@ -186,6 +189,7 @@
         <th>Departure Time</th>
         <th>Arrival Time</th>
         <th>Status</th>
+        <th>Assigned Gate</th>
         <th>Actions</th>
       </tr>
       </thead>
@@ -197,6 +201,7 @@
         <td th:text="${#temporals.format(flight.getDepartureLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></td>
         <td th:text="${#temporals.format(flight.getArrivalLocalDateTime(), 'dd-MM-yyyy HH:mm')}"></td>
         <td th:text="${flight.status}"></td>
+        <td th:text="${flight.assignedGateCode != null ? flight.assignedGateCode : 'N/A'}"></td>
         <td>
           <button type="button" class="btn btn-action" data-bs-toggle="modal" data-bs-target="#editFlightModal"
                   th:data-flightid="${flight.flightID}"
@@ -206,6 +211,16 @@
                   th:data-arrivaltime="${#temporals.format(flight.getArrivalLocalDateTime(), 'yyyy-MM-dd HH:mm')}"
                   th:data-status="${flight.status}">
             <i class="fas fa-edit"></i> Edit
+          </button>
+          <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#assignGateModal"
+                  th:data-flightid="${flight.flightID}"
+                  th:data-departureairportid="${flight.departureAirportID}"
+                  th:data-departuretime="${#temporals.format(flight.getDepartureLocalDateTime(), 'yyyy-MM-dd HH:mm')}"
+                  th:data-arrivaltime="${#temporals.format(flight.getArrivalLocalDateTime(), 'yyyy-MM-dd HH:mm')}"
+                  th:data-assignedgateid="${flight.assignedGateID}"
+                  th:data-assignedgatestarttime="${flight.gateStartTime != null ? #temporals.format(flight.getGateStartLocalDateTime(), 'yyyy-MM-dd HH:mm') : ''}"
+                  th:data-assignedgateendtime="${flight.gateEndTime != null ? #temporals.format(flight.getGateEndLocalDateTime(), 'yyyy-MM-dd HH:mm') : ''}">
+            <i class="fas fa-gate"></i> Assign Gate
           </button>
           <form th:action="@{/staff/flights/delete}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this flight?');">
             <input type="hidden" name="flightID" th:value="${flight.flightID}">
@@ -250,11 +265,11 @@
               <div class="mb-3">
                 <label for="addStatus" class="form-label">Status</label>
                 <select class="form-select" id="addStatus" name="status" required>
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="Delayed">Delayed</option>
-                  <option value="Cancelled">Cancelled</option>
-                  <option value="Departed">Departed</option>
-                  <option value="Arrived">Arrived</option>
+                  <option value="Scheduled">Scheduled</moption>
+                  <option value="Delayed">Delayed</moption>
+                  <option value="Cancelled">Cancelled</moption>
+                  <option value="Departed">Departed</moption>
+                  <option value="Arrived">Arrived</moption>
                 </select>
               </div>
             </div>
@@ -315,12 +330,92 @@
         </div>
       </div>
     </div>
+
+    <div class="modal fade" id="assignGateModal" tabindex="-1" aria-labelledby="assignGateModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header modal-header-thy">
+            <h5 class="modal-title" id="assignGateModalLabel">Assign Gate to Flight</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="gateAssignmentForm" method="post">
+            <div class="modal-body">
+              <input type="hidden" id="assignFlightID" name="flightID">
+              <input type="hidden" id="currentAssignmentID" name="assignmentID">
+
+              <div class="mb-3">
+                <label for="assignGateAirportID" class="form-label">Airport for Gate</label>
+                <select class="form-select" id="assignGateAirportID" name="airportID" required disabled>
+                  <option th:each="airport : ${airports}" th:value="${airport.airportID}" th:text="${airport.airportName + ' (' + airport.code + ')'}"></option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="assignStartTime" class="form-label">Gate Start Time</label>
+                <input type="datetime-local" class="form-control" id="assignStartTime" name="assignmentStartTime" required>
+              </div>
+              <div class="mb-3">
+                <label for="assignEndTime" class="form-label">Gate End Time</label>
+                <input type="datetime-local" class="form-control" id="assignEndTime" name="assignmentEndTime" required>
+              </div>
+              <div class="mb-3">
+                <label for="assignGateID" class="form-label">Available Gate</label>
+                <select class="form-select" id="assignGateID" name="gateID" required>
+                  <option value="">Select a Gate</option>
+                </select>
+                <div id="assignGateLoadingMessage" class="form-text" style="display: none;">Loading available gates...</div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-danger me-auto" id="deleteGateAssignmentBtn" style="display: none;">
+                <i class="fas fa-trash-alt"></i> Remove Assignment
+              </button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary" id="saveGateAssignmentBtn">Assign Gate</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="viewGateAssignmentsModal" tabindex="-1" aria-labelledby="viewGateAssignmentsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header modal-header-thy">
+            <h5 class="modal-title" id="viewGateAssignmentsModalLabel">All Gate Assignments</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-striped table-hover table-thy">
+              <thead>
+              <tr>
+                <th>Assign ID</th>
+                <th>Flight ID</th>
+                <th>Gate Code</th>
+                <th>Airport</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Actions</th>
+              </tr>
+              </thead>
+              <tbody id="allGateAssignmentsTableBody">
+
+              </tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script th:inline="javascript">
-  const routesData = /*[[${routes}]]*/ [];
+  const routesData = /*[[${routes}]]*/;
+  const airportsData = /*[[${airports}]]*/;
 
   function formatLocalDateTime(date) {
     if (!date) return '';
@@ -363,6 +458,17 @@
       const response = await fetch(`/staff/flights/getAircraftsByRouteDistance?routeID=${routeId}`);
       const aircrafts = await response.json();
 
+      if (!response.ok) {
+        const errorData = await response.text();
+        const errorOption = document.createElement('option');
+        errorOption.value = '';
+        errorOption.textContent = 'Error loading aircrafts: ' + (response.statusText || 'Unknown error');
+        errorOption.disabled = true;
+        aircraftSelectElement.appendChild(errorOption);
+        loadingMessageElement.style.display = 'none';
+        return;
+      }
+
       if (aircrafts.length === 0) {
         const noAircraftOption = document.createElement('option');
         noAircraftOption.value = '';
@@ -383,7 +489,6 @@
       }
 
     } catch (error) {
-      console.error('Error loading aircrafts:', error);
       const errorOption = document.createElement('option');
       errorOption.value = '';
       errorOption.textContent = 'Error loading aircrafts.';
@@ -393,7 +498,6 @@
       loadingMessageElement.style.display = 'none';
     }
   }
-
 
   const addRouteSelect = document.getElementById('addRouteID');
   const addAircraftSelect = document.getElementById('addAircraftID');
@@ -448,7 +552,6 @@
     modalDepartureTime.removeEventListener('change', calculateEditArrivalTime);
     modalRouteID.removeEventListener('change', () => loadSuitableAircrafts(modalRouteID.value, modalAircraftID, editAircraftLoadingMessage));
 
-
     modalRouteID.addEventListener('change', calculateEditArrivalTime);
     modalDepartureTime.addEventListener('change', calculateEditArrivalTime);
     modalRouteID.addEventListener('change', () => loadSuitableAircrafts(modalRouteID.value, modalAircraftID, editAircraftLoadingMessage));
@@ -460,6 +563,198 @@
     const initialRouteId = document.getElementById('addRouteID').value;
     if (initialRouteId) {
       loadSuitableAircrafts(initialRouteId, document.getElementById('addAircraftID'), document.getElementById('aircraftLoadingMessage'));
+    }
+  });
+
+  const assignGateModal = document.getElementById('assignGateModal');
+  let updateGatesListeners = {};
+
+  assignGateModal.addEventListener('show.bs.modal', async event => {
+    const button = event.relatedTarget;
+    const flightID = button.getAttribute('data-flightid');
+    const departureAirportID = button.getAttribute('data-departureairportid');
+    const flightDepartureTime = button.getAttribute('data-departuretime');
+    const flightArrivalTime = button.getAttribute('data-arrivaltime');
+    const assignedGateID = button.getAttribute('data-assignedgateid');
+    const assignedGateStartTime = button.getAttribute('data-assignedgatestarttime');
+    const assignedGateEndTime = button.getAttribute('data-assignedgateendtime');
+    const currentAssignmentID = button.getAttribute('data-currentassignmentid');
+
+    const assignFlightIDInput = assignGateModal.querySelector('#assignFlightID');
+    const currentAssignmentIDInput = assignGateModal.querySelector('#currentAssignmentID');
+    const assignGateAirportIDSelect = assignGateModal.querySelector('#assignGateAirportID');
+    const assignStartTimeInput = assignGateModal.querySelector('#assignStartTime');
+    const assignEndTimeInput = assignGateModal.querySelector('#assignEndTime');
+    const assignGateIDSelect = assignGateModal.querySelector('#assignGateID');
+    const assignGateLoadingMessage = assignGateModal.querySelector('#assignGateLoadingMessage');
+    const gateAssignmentForm = assignGateModal.querySelector('#gateAssignmentForm');
+    const saveGateAssignmentBtn = assignGateModal.querySelector('#saveGateAssignmentBtn');
+    const deleteGateAssignmentBtn = assignGateModal.querySelector('#deleteGateAssignmentBtn');
+
+    assignFlightIDInput.value = flightID;
+    assignGateAirportIDSelect.disabled = true;
+    assignGateAirportIDSelect.value = departureAirportID;
+
+    assignStartTimeInput.value = flightDepartureTime;
+    assignEndTimeInput.value = flightArrivalTime;
+
+    saveGateAssignmentBtn.textContent = 'Assign Gate';
+    gateAssignmentForm.action = '/staff/gate-assignments/assign';
+    currentAssignmentIDInput.value = '';
+    deleteGateAssignmentBtn.style.display = 'none';
+
+    let prePopulateGateId = null;
+
+    if (assignedGateID && assignedGateID !== 'N/A' && assignedGateID !== '') {
+      currentAssignmentIDInput.value = currentAssignmentID || '';
+      prePopulateGateId = assignedGateID;
+      assignStartTimeInput.value = assignedGateStartTime;
+      assignEndTimeInput.value = assignedGateEndTime;
+
+      saveGateAssignmentBtn.textContent = 'Update Assignment';
+      gateAssignmentForm.action = '/staff/gate-assignments/update';
+      deleteGateAssignmentBtn.style.display = 'block';
+
+      deleteGateAssignmentBtn.onclick = () => {
+        if (confirm('Are you sure you want to remove this gate assignment?')) {
+          gateAssignmentForm.action = '/staff/gate-assignments/delete';
+          gateAssignmentForm.submit();
+        }
+      };
+
+    } else {
+      deleteGateAssignmentBtn.style.display = 'none';
+      saveGateAssignmentBtn.textContent = 'Assign Gate';
+      gateAssignmentForm.action = '/staff/gate-assignments/assign';
+      currentAssignmentIDInput.value = '';
+    }
+
+    await loadAvailableGates(departureAirportID, assignStartTimeInput.value, assignEndTimeInput.value, assignGateIDSelect, assignGateLoadingMessage, prePopulateGateId);
+
+    if (updateGatesListeners.updateFunction) {
+      assignGateAirportIDSelect.removeEventListener('change', updateGatesListeners.updateFunction);
+      assignStartTimeInput.removeEventListener('change', updateGatesListeners.updateFunction);
+      assignEndTimeInput.removeEventListener('change', updateGatesListeners.updateFunction);
+    }
+
+    const updateFunction = async () => {
+      const selectedAirportID = assignGateAirportIDSelect.value;
+      const startTime = assignStartTimeInput.value;
+      const endTime = assignEndTimeInput.value;
+      if (selectedAirportID && startTime && endTime) {
+        await loadAvailableGates(selectedAirportID, startTime, endTime, assignGateIDSelect, assignGateLoadingMessage, prePopulateGateId);
+      }
+    };
+    assignGateAirportIDSelect.addEventListener('change', updateFunction);
+    assignStartTimeInput.addEventListener('change', updateFunction);
+    assignEndTimeInput.addEventListener('change', updateFunction);
+    updateGatesListeners.updateFunction = updateFunction;
+
+  });
+
+  assignGateModal.addEventListener('hidden.bs.modal', () => {
+    if (updateGatesListeners.updateFunction) {
+      assignGateModal.querySelector('#assignGateAirportID').removeEventListener('change', updateGatesListeners.updateFunction);
+      assignGateModal.querySelector('#assignStartTime').removeEventListener('change', updateGatesListeners.updateFunction);
+      assignGateModal.querySelector('#assignEndTime').removeEventListener('change', updateGatesListeners.updateFunction);
+      updateGatesListeners = {};
+    }
+  });
+
+  async function loadAvailableGates(airportId, startTime, endTime, gateSelectElement, loadingMessageElement, preSelectedGateId = null) {
+    gateSelectElement.innerHTML = '<option value="">Select a Gate</option>';
+    loadingMessageElement.style.display = 'block';
+
+    if (!airportId || !startTime || !endTime) {
+      loadingMessageElement.style.display = 'none';
+      return;
+    }
+
+    try {
+      const response = await fetch(`/staff/gate-assignments/getAvailableGates?airportID=${airportId}&desiredStartTime=${startTime}&desiredEndTime=${endTime}`);
+      const gates = await response.json();
+
+      if (gates.length === 0) {
+        const noGateOption = document.createElement('option');
+        noGateOption.value = '';
+        noGateOption.textContent = 'No available gates for this period.';
+        noGateOption.disabled = true;
+        gateSelectElement.appendChild(noGateOption);
+      } else {
+        gates.forEach(gate => {
+          const option = document.createElement('option');
+          option.value = gate.gateID;
+          option.textContent = gate.gateCode;
+          gateSelectElement.appendChild(option);
+        });
+      }
+
+      if (preSelectedGateId && !gateSelectElement.querySelector(`option[value="${preSelectedGateId}"]`)) {
+        const preSelectedOption = document.createElement('option');
+        preSelectedOption.value = preSelectedGateId;
+        const currentGateObject = airportsData.find(a => a.airportID == airportId)?.gates?.find(g => g.gateID == preSelectedGateId);
+        preSelectedOption.textContent = `Current: ${currentGateObject ? currentGateObject.gateCode : 'N/A'}`;
+        preSelectedOption.selected = true;
+        gateSelectElement.appendChild(preSelectedOption);
+      } else if (preSelectedGateId) {
+        gateSelectElement.value = preSelectedGateId;
+      }
+
+    } catch (error) {
+      const errorOption = document.createElement('option');
+      errorOption.value = '';
+      errorOption.textContent = 'Error loading gates.';
+      errorOption.disabled = true;
+      gateSelectElement.appendChild(errorOption);
+    } finally {
+      loadingMessageElement.style.display = 'none';
+    }
+  }
+
+  const viewGateAssignmentsModal = document.getElementById('viewGateAssignmentsModal');
+  viewGateAssignmentsModal.addEventListener('show.bs.modal', async event => {
+    const allGateAssignmentsTableBody = document.getElementById('allGateAssignmentsTableBody');
+    allGateAssignmentsTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Loading assignments...</td></tr>';
+
+    try {
+      const response = await fetch('/staff/gate-assignments/all');
+      const assignments = await response.json();
+
+      allGateAssignmentsTableBody.innerHTML = '';
+
+      if (assignments.length === 0) {
+        allGateAssignmentsTableBody.innerHTML = '<tr><td colspan="7" class="text-center">No gate assignments found.</td></tr>';
+      } else {
+        assignments.forEach(assignment => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+                        <td>${assignment.assignmentID}</td>
+                        <td>${assignment.flightID} (${assignment.departureAirportCode}-${assignment.arrivalAirportCode})</td>
+                        <td>${assignment.gateCode}</td>
+                        <td>${assignment.gateAirportCode}</td>
+                        <td>${formatLocalDateTime(new Date(assignment.startLocalDateTime))}</td>
+                        <td>${formatLocalDateTime(new Date(assignment.endLocalDateTime))}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-info edit-individual-assignment-btn"
+                                data-bs-toggle="modal" data-bs-target="#assignGateModal"
+                                data-flightid="${assignment.flightID}"
+                                data-departureairportid="${airportsData.find(a => a.code === assignment.departureAirportCode)?.airportID || ''}"
+                                data-departuretime="${formatLocalDateTime(new Date(assignment.departureTime))}"
+                                data-arrivaltime="${formatLocalDateTime(new Date(assignment.arrivalTime))}"
+                                data-assignedgateid="${assignment.gateID}"
+                                data-assignedgatestarttime="${formatLocalDateTime(new Date(assignment.startLocalDateTime))}"
+                                data-assignedgateendtime="${formatLocalDateTime(new Date(assignment.endLocalDateTime))}"
+                                data-currentassignmentid="${assignment.assignmentID}">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </td>
+                    `;
+          allGateAssignmentsTableBody.appendChild(row);
+        });
+      }
+
+    } catch (error) {
+      allGateAssignmentsTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading assignments.</td></tr>';
     }
   });
 
